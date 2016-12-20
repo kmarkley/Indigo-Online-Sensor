@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<Devices>
+	<Device type="sensor" id="onlineSensor">
+	    <Name>Online Sensor</Name>
+	    <ConfigUI>
+	        <Field id="sensorLabel" type="label">
+                <Label>Configure up to eight servers to test for connectivity:</Label>
+            </Field>
+            <Field id="checkServer1" type="textfield">
+                <Label>Server 1:</Label>
+            </Field>
+            <Field id="checkServer2" type="textfield">
+                <Label>Server 2:</Label>
+            </Field>
+            <Field id="checkServer3" type="textfield">
+                <Label>Server 3:</Label>
+            </Field>
+            <Field id="checkServer4" type="textfield">
+                <Label>Server 4:</Label>
+            </Field>
+            <Field id="checkServer5" type="textfield">
+                <Label>Server 5:</Label>
+            </Field>
+            <Field id="checkServer6" type="textfield">
+                <Label>Server 6:</Label>
+            </Field>
+            <Field id="checkServer7" type="textfield">
+                <Label>Server 7:</Label>
+            </Field>
+            <Field id="checkServer8" type="textfield">
+                <Label>Server 8:</Label>
+            </Field>
+            <Field id="spacer1" type="label">
+                <Label> </Label>
+            </Field>
+            <Field id="updateFrequency" type="textfield" defaultValue="5">
+                <Label>Update Frequency (minutes):</Label>
+            </Field>
+	        <Field id="sensorLogic" type="menu" defaultValue="ANY">
+                <Label>Sensor Logic:</Label>
+                <List>
+                    <Option value="ANY">ANY</Option>
+                    <Option value="ALL">ALL</Option>
+                </List>
+            </Field>
+	    </ConfigUI>
+    </Device>
+</Devices>
