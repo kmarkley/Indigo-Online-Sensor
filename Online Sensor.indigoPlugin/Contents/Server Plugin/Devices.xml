@@ -3,7 +3,7 @@
 	<Device type="sensor" id="onlineSensor">
 	    <Name>Online Sensor</Name>
 	    <ConfigUI>
-	        <Field id="sensorLabel" type="label">
+	        <Field id="sensorLabel1" type="label">
                 <Label>Configure up to eight servers to test for connectivity:</Label>
             </Field>
             <Field id="checkServer1" type="textfield">
@@ -30,6 +30,9 @@
             <Field id="checkServer8" type="textfield">
                 <Label>Server 8:</Label>
             </Field>
+			<Field id="sensorLabel2" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
+                <Label>Servers may be IP addresses or domain names.</Label>
+            </Field>
             <Field id="spacer1" type="label">
                 <Label> </Label>
             </Field>
@@ -44,5 +47,31 @@
                 </List>
             </Field>
 	    </ConfigUI>
+	    <States>
+            <State id="lastUp">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Last Up</TriggerLabel>
+                <ControlPageLabel>Last Up</ControlPageLabel>
+                <readonly>YES</readonly>
+            </State>
+            <State id="lastDn">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Last Down</TriggerLabel>
+                <ControlPageLabel>Last Down</ControlPageLabel>
+                <readonly>YES</readonly>
+            </State>
+            <State id="ipAddress">
+                <ValueType>String</ValueType>
+                <TriggerLabel>IP Address</TriggerLabel>
+                <ControlPageLabel>IP Address</ControlPageLabel>
+                <readonly>YES</readonly>
+            </State>
+            <State id="nextUpdate">
+                <ValueType>Number</ValueType>
+                <TriggerLabel>Next Update</TriggerLabel>
+                <ControlPageLabel>Next Update</ControlPageLabel>
+                <readonly>YES</readonly>
+            </State>
+	    </States>
     </Device>
 </Devices>

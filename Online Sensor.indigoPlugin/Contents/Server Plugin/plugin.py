@@ -8,6 +8,7 @@ import time
 import subprocess
 import re
 import socket
+import httplib
 from random import shuffle
 
 # Note the "indigo" module is automatically imported and made available inside
@@ -18,6 +19,18 @@ from random import shuffle
 
 serverFields = ["checkServer1","checkServer2","checkServer3","checkServer4",
                 "checkServer5","checkServer6","checkServer7","checkServe81"]
+sampleDeviceProps = {
+    'checkServer1':     '8.8.8.8',          # google dns
+    'checkServer2':     '8.8.4.4',          # google dns
+    'checkServer3':     '208.67.222.222',   # opneDNS
+    'checkServer4':     '208.67.220.220',   # opneDNS
+    'checkServer5':     '209.244.0.3',      # level3
+    'checkServer6':     '209.244.0.4',      # level3
+    'checkServer7':     '37.235.1.174',     # freeDNS
+    'checkServer8':     '37.235.1.177',     # freeDNS
+    'updateFrequency':  '5',
+    'sensorLogic':      'ANY',
+    }
 
 ################################################################################
 class Plugin(indigo.PluginBase):
@@ -52,7 +65,7 @@ class Plugin(indigo.PluginBase):
             while True:
                 for dev in indigo.devices.iter(u'self'):
                     if dev.deviceTypeId == "onlineSensor":
-                        if dev.pluginProps.get("nextUpdate",0) < time.time():
+                        if dev.states["nextUpdate"] < time.time():
                             self.updateOnlineSensor(dev)
                 self.sleep(10)
         except self.StopThread:
@@ -85,19 +98,23 @@ class Plugin(indigo.PluginBase):
             return (False, valuesDict, errorsDict)
         return (True, valuesDict)
     
-    def deviceStartComm(self, dev):
-        self.logger.debug(u"deviceStartComm: " + dev.name)
-        theProps = dev.pluginProps
-        if dev.deviceTypeId == "onlineSensor":
-            theProps["updateFrequency"] = theProps.get("updateFrequency","5")
-            theProps["updateFreqSeconds"] = int(theProps["updateFrequency"])*60
-            servers = []
-            for key, value in theProps.items():
-                if (key in serverFields) and value:
-                    servers.append(value)
-            theProps["servers"] = servers
-        if theProps != dev.pluginProps:
-            dev.replacePluginPropsOnServer(theProps)
+    def closedDeviceConfigUi(self, valuesDict, userCancelled, typeId, devId):
+        self.logger.debug(u"closedDeviceConfigUi: "+typeId+" "+unicode(devId))
+        if not userCancelled:
+            dev = indigo.devices[devId]
+            theProps = dev.pluginProps
+            if dev.deviceTypeId == "onlineSensor":
+                theProps["updateFrequency"] = theProps.get("updateFrequency","5")
+                theProps["updateFreqSeconds"] = int(theProps["updateFrequency"])*60
+                servers = []
+                for key, value in theProps.items():
+                    if (key in serverFields) and value:
+                        servers.append(value)
+                theProps["servers"] = servers
+            if theProps != dev.pluginProps:
+                dev.updateStateOnServer(key='nextUpdate', value=int(time.time()+theProps["updateFreqSeconds"]))
+                dev.replacePluginPropsOnServer(theProps)
+    
     
     def updateOnlineSensor(self,dev):
         self.logger.debug(u"updateOnlineSensor: " + dev.name)
@@ -105,13 +122,45 @@ class Plugin(indigo.PluginBase):
         servers = theProps.get("servers",[])
         shuffle(servers)
         if theProps.get("sensorLogic","ANY") == "ANY":
-            online = any(_doPing(server) for server in servers)
+            online = any(do_ping(server) for server in servers)
         else:
-            online = all(_doPing(server) for server in servers)
-        dev.updateStateOnServer(key='onOffState', value=online)        
-        theProps["nextUpdate"] = int(time.time()+theProps["updateFreqSeconds"])
-        dev.replacePluginPropsOnServer(theProps)
-
+            online = all(do_ping(server) for server in servers)
+        if online != dev.onState:
+            if online:
+                dev.updateStateOnServer(key='lastUp', value=unicode(indigo.server.getTime()))
+            else:
+                dev.updateStateOnServer(key='lastDn', value=unicode(indigo.server.getTime()))
+        if online:
+            ipAddress = get_host_IP_Address()
+            if dev.states["ipAddress"] != ipAddress:
+                dev.updateStateOnServer(key='ipAddress', value=ipAddress)
+        dev.updateStateOnServer(key='onOffState', value=online)
+        dev.updateStateOnServer(key='nextUpdate', value=int(time.time()+theProps["updateFreqSeconds"]))
+    
+    
+    ########################################
+    # Menu Methods
+    ########################################
+    
+    def createSampleDevice(self, valuesDict="", typeId=""):
+        self.logger.debug(u"createSampleDevice: " + valuesDict.get("sampleName"))
+        errorsDict = indigo.Dict()
+        
+        theName = valuesDict.get("sampleName","Online Sensor Sample Device")
+        if theName in indigo.devices:
+            errorsDict["sampleName"] = "A device already exists with that name"
+        
+        if len(errorsDict) > 0:
+            return (False, valuesDict, errorsDict)
+        else:
+            indigo.device.create(
+                protocol     = indigo.kProtocol.Plugin,
+                name         = theName,
+                description  = "",
+                deviceTypeId = "onlineSensor",
+                props        = sampleDeviceProps,
+                )
+            return (True, valuesDict)
     
     ########################################
     # Action Methods
@@ -125,11 +174,11 @@ class Plugin(indigo.PluginBase):
             else:
                 self.logger.error("Unknown action: "+unicode(action.sensorAction))
     
-    ########################################
-    # Utilities
-    ########################################
-    
-def _doPing(server):
+########################################
+# Utilities
+########################################
+
+def do_ping(server):
   p = subprocess.Popen("/sbin/ping -c1 -t1 "+server,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
   p.communicate()
   return (p.returncode == 0)
@@ -161,10 +210,26 @@ def is_valid_ipv4_address(address):
     except socket.error:  # not a valid address
         return False
     return True
-
 def is_valid_ipv6_address(address):
     try:
         socket.inet_pton(socket.AF_INET6, address)
     except socket.error:  # not a valid address
         return False
     return True
+
+# https://github.com/gsiametis/dreampy_dns/blob/master/dreampy_dns.py
+def get_host_IP_Address(protocol='ip'):
+    if protocol == 'ipv6':
+        conn = httplib.HTTPConnection('checkipv6.dyndns.com')
+        conn.request("GET","/index.html")
+    else:
+        conn = httplib.HTTPConnection('checkip.dyndns.com')
+        conn.request("GET", "/index.html")
+    body = cleanhtml(conn.getresponse().read().decode("UTF-8"))
+    IP_Addr_list = body.rsplit()
+    IP_Addr = IP_Addr_list[-1]
+    return IP_Addr
+def cleanhtml(raw_html):
+  cleanr =re.compile('<.*?>')
+  cleantext = re.sub(cleanr,'', raw_html)
+  return cleantext

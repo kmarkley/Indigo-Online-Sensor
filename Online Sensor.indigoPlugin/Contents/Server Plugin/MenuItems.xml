@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<MenuItems>
+	<MenuItem id="addSampleDevice">
+		<Name>Add Sample Device</Name>
+		<CallbackMethod>createSampleDevice</CallbackMethod>
+		<ConfigUI>
+		    <Field id="sampleLabel" type="label">
+		        <Label>Create a device that pings major DNS servers to indicate if Indigo is connected to he internet. You can customize the device after it is created.</Label>
+		    </Field>
+			<Field id="sampleName" type="textfield" defaultValue="Online Sensor">
+				<Label>Device Name:</Label>
+			</Field>
+		</ConfigUI>
+	</MenuItem>
+</MenuItems>
