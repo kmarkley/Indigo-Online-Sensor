@@ -1,57 +1,87 @@
 # Online Sensor
 
-This is an )extremely simple plugin that pings internet servers and presents the result as an Indigo Sensor device.
+This is an extremely simple plugin that checks for internet connectivity and presents the result as an Indigo device.
 
 There are 2 main uses:
 
 1. Determine if the machine running Indigo Server is connected to the internet.
 2. Determine if a particular online service is available.
 
-(One could conceivable also use this to determine the status of local network resouces, but FINGscan is a much more robust tool for that.)
+One could conceivable also use this to determine the status of local network resouces, but FINGscan is a much more robust tool for that.
 
 ## Easy Setup
 
-Select **Add Sample Device** from the plugin's menu.  A device will be created that pings 8 very large DNS servers.  Now Indigo knows if it is connected to the internet.  Customize the configuration any way you like.
+Select the **Add Sample Device** items from the plugin's menu.  
+
+For **Online Sensor**, device will be created that pings 8 very large DNS servers.  Now Indigo knows if it is connected to the internet.  
+
+For **Public IP**, a device will be created that uses ipecho.net to get your public IP.
+
+Most people will only need one device of each type, and default setting should work fine.  But you can customize the configurations any way you like.
 
 ## Devices
 
-The plugin defines one new type of Device, the Online Sensor.
+The plugin defines two new types of Device, Online Sensors, and Public IPs.
 
-### Configuration
+### 'Online Sensor' devices
 
-##### Servers
+#### Configuration
 
+* **Servers**  
 Define up to 8 servers for the device to ping.  Servers can be IP addresses or Domain names.  Basic validation will be performed.
 
-##### Update Frequency (minutes)
-
+* **Update Frequency (minutes)**  
 Define how often the device will check (ping) the server(s).
 
-##### Sensor Logic
-
+* **Sensor Logic**  
 Define whether the device goes **ON** when **ANY** of the servers reply to pings or when **ALL** of them do.
 
-### States
+#### States
 
-The plugin provide the following device states:
-
-##### IP Address
-
-The apparent public IP address of the machine running Indigo Server.  Useful as a trigger for updating DDNS.
-
-##### Last Up
-
+* **Last Up**  
 Timestamp of the last time the device switched to the **ON** state.
 
-##### Last Down
-
+* **Last Down**  
 Timestamp of the last time the device switched to the **OFF** state.
 
-##### Next Update
+* **Next Update**  
+Seconds after epoch when next update is scheduled.  Used internally.
 
-Seconds after epoch to perform the next update.  Used internally.
+* **onOffState** (UI display)  
+Whether Indigo is connected to the internet.
+
+### 'Public IP' devices
+
+#### Configuration
+
+* **IP Echo Service**  
+Define the service you want to use.  Defaults to http://ipecho.net/plain
+
+* **Update Frequency (minutes)**  
+Define how often the device will check (ping) the server(s).  5 minute minimum.
+
+#### States
+
+* **IP Address**  
+The apparent public IP address of the machine running Indigo Server.  Note that the state does not change until a new positive result is obtained.  If the device fails to optain an IP, the old state will persist. This makes it useful as a trigger for updating DDNS.
+
+* **IP Address UI** (UI display)  
+Same as above, except that when the device fails to connect the UI displays "N/A".
+
+* **Last Success**  
+Timestamp of the last time the device successfully optained an IP address.
+
+* **Last Fail**  
+Timestamp of the last time the device failed to optained an IP address.
+
+* **Next Update**  
+Seconds after epoch when next update is scheduled.  Used internally.
+
+* **onOffState**  
+If the last attempt was successful.
 
 ## Notes
 
-* The list of servers will be shuffled before each update. For **ANY** sensor logic and frequent updating, this speeds up updates in the the case where the first server is not reachable.
-* The ping command sends a single ping packet with a timeout of 1 second.  So maximum time to update is on the order of 8 seconds. Typically *much* lower.
+* When sensor logic is **ANY**, the list of servers will be shuffled before each update.
+* The ping command sends a single ping packet with a timeout of 1 second.
+* The IP Echo request has a timeout of 15 seconds.

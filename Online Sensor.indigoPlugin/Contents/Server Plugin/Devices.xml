@@ -60,10 +60,53 @@
                 <ControlPageLabel>Last Down</ControlPageLabel>
                 <readonly>YES</readonly>
             </State>
+            <State id="nextUpdate">
+                <ValueType>Number</ValueType>
+                <TriggerLabel>Next Update</TriggerLabel>
+                <ControlPageLabel>Next Update</ControlPageLabel>
+                <readonly>YES</readonly>
+            </State>
+	    </States>
+    </Device>
+    <Device type="custom" id="publicIP">
+	    <Name>Public IP Address</Name>
+	    <ConfigUI>
+            <Field id="ipEchoService" type="textfield" defaultValue="http://ipecho.net/plain">
+                <Label>IP Echo Service (full URL):</Label>
+            </Field>
+            <Field id="updateFrequency" type="textfield" defaultValue="15">
+                <Label>Update Frequency (minutes):</Label>
+            </Field>
+	    </ConfigUI>
+	    <States>
+            <State id="onOffState">
+                <ValueType boolType="OnOff">Boolean</ValueType>
+                <TriggerLabel>On/Off State</TriggerLabel>
+                <ControlPageLabel>On/Off State</ControlPageLabel>
+                <readonly>YES</readonly>
+            </State>
             <State id="ipAddress">
                 <ValueType>String</ValueType>
                 <TriggerLabel>IP Address</TriggerLabel>
                 <ControlPageLabel>IP Address</ControlPageLabel>
+                <readonly>YES</readonly>
+            </State>
+            <State id="ipAddressUi">
+                <ValueType>String</ValueType>
+                <TriggerLabel>IP Address UI</TriggerLabel>
+                <ControlPageLabel>IP Address UI</ControlPageLabel>
+                <readonly>YES</readonly>
+            </State>
+            <State id="lastSuccess">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Last Success</TriggerLabel>
+                <ControlPageLabel>Last Success</ControlPageLabel>
+                <readonly>YES</readonly>
+            </State>
+            <State id="lastFail">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Last Fail</TriggerLabel>
+                <ControlPageLabel>Last Fail</ControlPageLabel>
                 <readonly>YES</readonly>
             </State>
             <State id="nextUpdate">
@@ -72,6 +115,7 @@
                 <ControlPageLabel>Next Update</ControlPageLabel>
                 <readonly>YES</readonly>
             </State>
-	    </States>
+        </States>
+        <UiDisplayStateId>ipAddressUi</UiDisplayStateId>
     </Device>
 </Devices>

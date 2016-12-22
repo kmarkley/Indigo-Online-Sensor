@@ -1,13 +1,25 @@
 <?xml version="1.0"?>
 <MenuItems>
-	<MenuItem id="addSampleDevice">
-		<Name>Add Sample Device</Name>
-		<CallbackMethod>createSampleDevice</CallbackMethod>
+	<MenuItem id="addSampleOnlineSensor">
+		<Name>Add Sample Online Sensor Device</Name>
+		<CallbackMethod>createSampleOnlineSensor</CallbackMethod>
 		<ConfigUI>
 		    <Field id="sampleLabel" type="label">
 		        <Label>Create a device that pings major DNS servers to indicate if Indigo is connected to he internet. You can customize the device after it is created.</Label>
 		    </Field>
 			<Field id="sampleName" type="textfield" defaultValue="Online Sensor">
+				<Label>Device Name:</Label>
+			</Field>
+		</ConfigUI>
+	</MenuItem>
+	<MenuItem id="addSamplePublicIP">
+		<Name>Add Sample Public IP Device</Name>
+		<CallbackMethod>createSamplePublicIP</CallbackMethod>
+		<ConfigUI>
+		    <Field id="sampleLabel" type="label">
+		        <Label>Create a device that checks Indigo's public IP address. You can customize the device after it is created.</Label>
+		    </Field>
+			<Field id="sampleName" type="textfield" defaultValue="Public IP">
 				<Label>Device Name:</Label>
 			</Field>
 		</ConfigUI>
