@@ -1,13 +1,13 @@
 # Online Sensor
 
-This is an extremely simple plugin that checks for internet connectivity and presents the result as an Indigo device.
+This is an extremely simple plugin that checks for internet connectivity and presents the result as an Indigo sensor device.
 
-There are 2 main uses:
+There are a few main uses:
 
 1. Determine if the machine running Indigo Server is connected to the internet.
 2. Determine if a particular online service is available.
-
-One could conceivable also use this to determine the status of local network resouces, but FINGscan is a much more robust tool for that.
+3. Check if the external IP address changes to trigger a DDNS script
+4. Determine the status of local network resouces. FINGscan is a much more robust tool for this, but if tou only have a couple devices you're interested in this might do.
 
 ## Easy Setup
 
@@ -45,9 +45,9 @@ Timestamp of the last time the device switched to the **ON** state.
 Timestamp of the last time the device switched to the **OFF** state.
 
 * **Next Update**  
-Seconds after epoch when next update is scheduled.  Used internally.
+Seconds after epoch when the next update is scheduled.  Used internally.
 
-* **onOffState** (UI display)  
+* **onOffState**  
 Whether Indigo is connected to the internet.
 
 ### 'Public IP' devices
@@ -63,9 +63,9 @@ Define how often the device will check (ping) the server(s).  5 minute minimum.
 #### States
 
 * **IP Address**  
-The apparent public IP address of the machine running Indigo Server.  Note that the state does not change until a new positive result is obtained.  If the device fails to optain an IP, the old state will persist. This makes it useful as a trigger for updating DDNS.
+The apparent public IP address of the machine running Indigo Server.  **Note that the state does not change until a new positive result is obtained.**  If the device fails to optain an IP, the old state will persist. This makes it useful as a trigger for updating DDNS.
 
-* **IP Address UI** (UI display)  
+* **IP Address UI**  
 Same as above, except that when the device fails to connect the UI displays "N/A".
 
 * **Last Success**  

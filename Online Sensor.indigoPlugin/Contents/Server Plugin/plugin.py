@@ -22,7 +22,7 @@ except ImportError:
 # globals
 
 serverFields = ["checkServer1","checkServer2","checkServer3","checkServer4",
-                "checkServer5","checkServer6","checkServer7","checkServe81"]
+                "checkServer5","checkServer6","checkServer7","checkServer8"]
 
 latestStateList = {
     "onlineSensor": (
@@ -40,24 +40,25 @@ latestStateList = {
         )
     }
 
-defaultOnlineSensorProps = {
-    'checkServer1':     '8.8.8.8',          # google dns
-    'checkServer2':     '8.8.4.4',          # google dns
-    'checkServer3':     '208.67.222.222',   # opneDNS
-    'checkServer4':     '208.67.220.220',   # opneDNS
-    'checkServer5':     '209.244.0.3',      # level3
-    'checkServer6':     '209.244.0.4',      # level3
-    'checkServer7':     '37.235.1.174',     # freeDNS
-    'checkServer8':     '37.235.1.177',     # freeDNS
-    'updateFrequency':  '5',
-    'sensorLogic':      'ANY',
-    'updateFreqSeconds': 300,
-    }
-
-defaultPublicIPProps = {
-    'updateFrequency':  '15',
-    'updateFreqSeconds': 300,
-    'ipEchoService': "http://ipecho.net/plain",
+defaultProps = {
+    "onlineSensor": {
+        "checkServer1":     "8.8.8.8",          # google dns
+        "checkServer2":     "8.8.4.4",          # google dns
+        "checkServer3":     "208.67.222.222",   # opneDNS
+        "checkServer4":     "208.67.220.220",   # opneDNS
+        "checkServer5":     "209.244.0.3",      # level3
+        "checkServer6":     "209.244.0.4",      # level3
+        "checkServer7":     "37.235.1.174",     # freeDNS
+        "checkServer8":     "37.235.1.177",     # freeDNS
+        "updateFrequency":  "5",
+        "sensorLogic":      "ANY",
+        "updateFreqSeconds": 300,
+        },
+    "publicIP": {
+        "updateFrequency":  "15",
+        "updateFreqSeconds": 900,
+        "ipEchoService": "http://ipecho.net/plain",
+        },
     }
 
 ################################################################################
@@ -95,12 +96,8 @@ class Plugin(indigo.PluginBase):
                 loopTime = time.time()
                 for devId in self.deviceList:
                     dev = indigo.devices[devId]
-                    if dev.deviceTypeId == "onlineSensor":
-                        if dev.states["nextUpdate"] < loopTime:
-                            self.updateOnlineSensor(dev)
-                    elif dev.deviceTypeId == "publicIP":
-                        if dev.states["nextUpdate"] < loopTime:
-                            self.updatePublicIP(dev)
+                    if dev.states["nextUpdate"] < loopTime:
+                        self.updateDeviceStatus(dev)
                 self.sleep(int(loopTime+10-time.time()))
         except self.StopThread:
             pass    # Optionally catch the StopThread exception and do any needed cleanup.
@@ -111,6 +108,22 @@ class Plugin(indigo.PluginBase):
     # Device Methods
     ########################################
     
+    def deviceStartComm(self, dev):
+        self.logger.debug(u"deviceStartComm: "+dev.name)
+        self.updateDeviceStates(dev)
+        self.updateDeviceProps(dev)
+        if dev.id not in self.deviceList:
+            self.deviceList.append(dev.id)
+    
+    def deviceStopComm(self, dev):
+        self.logger.debug(u"deviceStopComm: "+dev.name)
+        if dev.id in self.deviceList:
+            self.deviceList.remove(dev.id)
+            
+    def didDeviceCommPropertyChange(self, origDev, newDev):
+        # not necessary to re-start device on changes
+        return False
+        
     def validateDeviceConfigUi(self, valuesDict, typeId, devId, runtime=False):
         self.logger.debug(u"validateDeviceConfigUi: " + typeId)
         errorsDict = indigo.Dict()
@@ -134,85 +147,75 @@ class Plugin(indigo.PluginBase):
                 errorsDict["updateFrequency"] = "Update Frequency must be a positive integer"
             elif int(valuesDict.get("updateFrequency","")) < 5:
                 errorsDict["updateFrequency"] = "Update Frequency must be at least 5 minutes"
-            if not is_valid(valuesDict.get("ipEchoService",defaultPublicIPProps["ipEchoService"])):
+            if not is_valid(valuesDict.get("ipEchoService")):
                 errorsDict["ipEchoService"] = "Not a valid URL"
             
         if len(errorsDict) > 0:
             return (False, valuesDict, errorsDict)
-        return (True, valuesDict)
+        else:
+            valuesDict["updateFreqSeconds"] = int(valuesDict.get("updateFrequency"))*60
+            if typeId == "onlineSensor":
+                servers = []
+                for key, value in valuesDict.items():
+                    if (key in serverFields) and value:
+                        servers.append(value)
+                valuesDict["servers"] = servers
+            return (True, valuesDict)
     
-    def deviceStartComm(self, dev):
-        self.logger.debug(u"deviceStartComm: "+dev.name)
+    def updateDeviceStates(self, dev):
         if any(item not in dev.states for item in latestStateList[dev.deviceTypeId]):
             dev.stateListOrDisplayStateIdChanged()
+    
+    def updateDeviceProps(self, dev):
         theProps = dev.pluginProps
-        if dev.deviceTypeId in ("onlineSensor","publicIP"):
-            theProps["updateFrequency"] = theProps.get("updateFrequency","5")
-            theProps["updateFreqSeconds"] = int(theProps["updateFrequency"])*60
-        if dev.deviceTypeId == "onlineSensor":
-            servers = []
-            for key, value in theProps.items():
-                if (key in serverFields) and value:
-                    servers.append(value)
-            theProps["servers"] = servers
+        for key, value in defaultProps[dev.deviceTypeId].items():
+            if (key not in serverFields) and((key not in theProps) or not theProps[key]):
+                theProps[key] = value
         if theProps != dev.pluginProps:
-            dev.updateStateOnServer(key='nextUpdate', value=int(time.time()+theProps["updateFreqSeconds"]))
             dev.replacePluginPropsOnServer(theProps)
-        if dev.id not in self.deviceList:
-            self.deviceList.append(dev.id)
+            dev.updateStateOnServer(key='nextUpdate', value=int(time.time()+theProps["updateFreqSeconds"]))
     
-    def deviceStopComm(self, dev):
-        self.logger.debug(u"deviceStopComm: "+dev.name)
-        if dev.id in self.deviceList:
-            self.deviceList.remove(dev.id)
-            
-    def updateOnlineSensor(self,dev):
-        self.logger.debug(u"updateOnlineSensor: " + dev.name)
+    def updateDeviceStatus(self,dev):
+        self.logger.debug(u"updateDeviceStatus: " + dev.name)
         startTime = time.time()
         theProps = dev.pluginProps
         newStates = [{'key':'nextUpdate','value':int(startTime+theProps["updateFreqSeconds"])}]
-        servers = theProps.get("servers",[])
-        # check servers
-        if theProps.get("sensorLogic","ANY") == "ANY":
-            shuffle(servers)
-            online = any(do_ping(server) for server in servers)
-        else:
-            online = all(do_ping(server) for server in servers)
-        # update if changed
-        if online != dev.onState:
-            newStates.append({'key':'onOffState','value':online})
-            if online:
-                newStates.append({'key':'lastUp','value':unicode(indigo.server.getTime())})
+        if dev.deviceTypeId == "onlineSensor":
+            servers = theProps.get("servers",[])
+            # check servers
+            if theProps.get("sensorLogic","ANY") == "ANY":
+                shuffle(servers)
+                online = any(do_ping(server) for server in servers)
             else:
-                newStates.append({'key':'lastDn','value':unicode(indigo.server.getTime())})
+                online = all(do_ping(server) for server in servers)
+            # update if changed
+            if online != dev.onState:
+                newStates.append({'key':'onOffState','value':online})
+                if online:
+                    newStates.append({'key':'lastUp','value':unicode(indigo.server.getTime())})
+                else:
+                    newStates.append({'key':'lastDn','value':unicode(indigo.server.getTime())})
+        elif dev.deviceTypeId == "publicIP":
+            # get IP address
+            ipAddress = get_host_IP_address(theProps.get("ipEchoService"))
+            if ipAddress:
+                if not dev.states["onOffState"]:
+                    newStates.append({'key':'onOffState','value':True})
+                if dev.states["ipAddress"] != ipAddress:
+                    newStates.append({'key':'ipAddress','value':ipAddress})
+                if dev.states["ipAddressUi"] != ipAddress:
+                    newStates.append({'key':'ipAddressUi','value':ipAddress})
+                newStates.append({'key':'lastSuccess','value':unicode(indigo.server.getTime())})
+            else:
+                if dev.states["onOffState"]:
+                    newStates.append({'key':'onOffState','value':False})
+                if dev.states["ipAddressUi"] != "N/A":
+                    newStates.append({'key':'ipAddressUi','value':"N/A"})
+                newStates.append({'key':'lastFail','value':unicode(indigo.server.getTime())})
         # update device
         dev.updateStatesOnServer(newStates)
-        self.logger.debug("updateOnlineSensor: "+unicode(time.time()-startTime)+" seconds")
-    
-    def updatePublicIP(self,dev):
-        self.logger.debug(u"updatePublicIP: " + dev.name)
-        startTime = time.time()
-        theProps = dev.pluginProps
-        newStates = [{'key':'nextUpdate','value':int(startTime+theProps["updateFreqSeconds"])}]
-        # get IP address
-        ipAddress = get_host_IP_address(theProps.get("ipEchoService",defaultPublicIPProps["ipEchoService"]))
-        if ipAddress:
-            if not dev.states["onOffState"]:
-                newStates.append({'key':'onOffState','value':True})
-            if dev.states["ipAddress"] != ipAddress:
-                newStates.append({'key':'ipAddress','value':ipAddress})
-            if dev.states["ipAddressUi"] != ipAddress:
-                newStates.append({'key':'ipAddressUi','value':ipAddress})
-            newStates.append({'key':'lastSuccess','value':unicode(indigo.server.getTime())})
-        else:
-            if dev.states["onOffState"]:
-                newStates.append({'key':'onOffState','value':False})
-            if dev.states["ipAddressUi"] != "N/A":
-                newStates.append({'key':'ipAddressUi','value':"N/A"})
-            newStates.append({'key':'lastFail','value':unicode(indigo.server.getTime())})
-        # update device
-        dev.updateStatesOnServer(newStates)
-        self.logger.debug("updatePublicIP: "+unicode(time.time()-startTime)+" seconds")
+        self.logger.debug("updateDeviceStatus: "+unicode(time.time()-startTime)+" seconds")
+        
     
     ########################################
     # Menu Methods
@@ -234,7 +237,7 @@ class Plugin(indigo.PluginBase):
                 name         = theName,
                 description  = "",
                 deviceTypeId = "onlineSensor",
-                props        = defaultOnlineSensorProps,
+                props        = defaultProps["onlineSensor"],
                 )
             return (True, valuesDict)
     
@@ -254,7 +257,7 @@ class Plugin(indigo.PluginBase):
                 name         = theName,
                 description  = "",
                 deviceTypeId = "publicIP",
-                props        = defaultPublicIPProps,
+                props        = defaultProps["publicIP"],
                 )
             return (True, valuesDict)
     
@@ -265,10 +268,7 @@ class Plugin(indigo.PluginBase):
     def actionControlSensor(self, action, dev):
         self.logger.debug(u"actionControlSensor: "+dev.name)
         if action.sensorAction == indigo.kUniversalAction.RequestStatus:
-            if dev.deviceTypeId == "onlineSensor":
-                self.updateOnlineSensor(dev)
-            elif dev.deviceTypeId == "publicIP":
-                self.updatePublicIP(dev)
+            self.updateDeviceStatus(dev)
         else:
             self.logger.error("Unknown action: "+unicode(action.sensorAction))
     

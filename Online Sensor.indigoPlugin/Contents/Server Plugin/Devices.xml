@@ -68,7 +68,7 @@
             </State>
 	    </States>
     </Device>
-    <Device type="custom" id="publicIP">
+    <Device type="sensor" id="publicIP">
 	    <Name>Public IP Address</Name>
 	    <ConfigUI>
             <Field id="ipEchoService" type="textfield" defaultValue="http://ipecho.net/plain">
@@ -79,12 +79,6 @@
             </Field>
 	    </ConfigUI>
 	    <States>
-            <State id="onOffState">
-                <ValueType boolType="OnOff">Boolean</ValueType>
-                <TriggerLabel>On/Off State</TriggerLabel>
-                <ControlPageLabel>On/Off State</ControlPageLabel>
-                <readonly>YES</readonly>
-            </State>
             <State id="ipAddress">
                 <ValueType>String</ValueType>
                 <TriggerLabel>IP Address</TriggerLabel>
