@@ -7,7 +7,7 @@ There are a few main uses:
 1. Determine if the machine running Indigo Server is connected to the internet.
 2. Determine if a particular online service is available.
 3. Check if the external IP address changes to trigger a DDNS script
-4. Determine the status of local network resouces. FINGscan is a much more robust tool for this, but if tou only have a couple devices you're interested in this might do.
+4. Determine the status of local network resouces. FINGscan is a much more robust tool for this, but if you only have a couple devices you're interested in this might do.
 
 ## Easy Setup
 
@@ -56,6 +56,36 @@ Whether Indigo is connected to the internet.
 
 * **IP Echo Service**  
 Define the service you want to use.  Defaults to http://ipecho.net/plain
+
+* **Update Frequency (minutes)**  
+Define how often the device will check (ping) the server(s).  5 minute minimum.
+
+#### States
+
+* **IP Address**  
+The apparent public IP address of the machine running Indigo Server.  **Note that the state does not change until a new positive result is obtained.**  If the device fails to optain an IP, the old state will persist. This makes it useful as a trigger for updating DDNS.
+
+* **IP Address UI**  
+Same as above, except that when the device fails to connect the UI displays "N/A".
+
+* **Last Success**  
+Timestamp of the last time the device successfully optained an IP address.
+
+* **Last Fail**  
+Timestamp of the last time the device failed to optained an IP address.
+
+* **Next Update**  
+Seconds after epoch when next update is scheduled.  Used internally.
+
+* **onOffState**  
+If the last attempt was successful.
+
+### 'Lookup IP' devices
+
+#### Configuration
+
+* **Domain Name**  
+Define the domain name to lookup.
 
 * **Update Frequency (minutes)**  
 Define how often the device will check (ping) the server(s).  5 minute minimum.

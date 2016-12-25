@@ -31,13 +31,19 @@ latestStateList = {
         "nextUpdate",
         ),
     "publicIP": (
-        "onOffState",
         "ipAddress",
         "ipAddressUi",
         "lastSuccess",
         "lastFail",
         "nextUpdate",
-        )
+        ),
+    "lookupIP": (
+        "ipAddress",
+        "ipAddressUi",
+        "lastSuccess",
+        "lastFail",
+        "nextUpdate",
+        ),
     }
 
 defaultProps = {
@@ -58,6 +64,11 @@ defaultProps = {
         "updateFrequency":  "15",
         "updateFreqSeconds": 900,
         "ipEchoService": "http://ipecho.net/plain",
+        },
+    "lookupIP": {
+        "updateFrequency":  "15",
+        "updateFreqSeconds": 900,
+        "domainName": "",
         },
     }
 
@@ -128,27 +139,27 @@ class Plugin(indigo.PluginBase):
         self.logger.debug(u"validateDeviceConfigUi: " + typeId)
         errorsDict = indigo.Dict()
         
+        if valuesDict.get("updateFrequency","") == "":
+            errorsDict["updateFrequency"] = "Update Frequency is required"
+        elif not valuesDict.get("updateFrequency","").isdigit():
+            errorsDict["updateFrequency"] = "Update Frequency must be a positive integer"
+        elif int(valuesDict.get("updateFrequency","")) == 0:
+            errorsDict["updateFrequency"] = "Update Frequency may not be zero"
+        
+        
         if typeId == "onlineSensor":
-            if valuesDict.get("updateFrequency","") == "":
-                errorsDict["updateFrequency"] = "Update Frequency is required"
-            elif not valuesDict.get("updateFrequency","").isdigit():
-                errorsDict["updateFrequency"] = "Update Frequency must be a positive integer"
-            elif int(valuesDict.get("updateFrequency","")) == 0:
-                errorsDict["updateFrequency"] = "Update Frequency may not be zero"
             for key, value in valuesDict.items():
                 if (key in serverFields) and value:
                     if not any([is_valid_hostname(value),is_valid_ipv4_address(value),is_valid_ipv6_address(value)]):
                         errorsDict[key] = "Not valid IP or host name"
             
         elif typeId == "publicIP":
-            if valuesDict.get("updateFrequency","") == "":
-                errorsDict["updateFrequency"] = "Update Frequency is required"
-            elif not valuesDict.get("updateFrequency","").isdigit():
-                errorsDict["updateFrequency"] = "Update Frequency must be a positive integer"
-            elif int(valuesDict.get("updateFrequency","")) < 5:
-                errorsDict["updateFrequency"] = "Update Frequency must be at least 5 minutes"
-            if not is_valid(valuesDict.get("ipEchoService")):
+            if not is_valid_url(valuesDict.get("ipEchoService")):
                 errorsDict["ipEchoService"] = "Not a valid URL"
+            
+        elif typeId == "lookupIP":
+            if not is_valid_hostname(valuesDict.get("domainName")):
+                errorsDict["domainName"] = "Not a valid domain"
             
         if len(errorsDict) > 0:
             return (False, valuesDict, errorsDict)
@@ -195,22 +206,21 @@ class Plugin(indigo.PluginBase):
                     newStates.append({'key':'lastUp','value':unicode(indigo.server.getTime())})
                 else:
                     newStates.append({'key':'lastDn','value':unicode(indigo.server.getTime())})
-        elif dev.deviceTypeId == "publicIP":
+        elif dev.deviceTypeId in ("publicIP","lookupIP"):
             # get IP address
-            ipAddress = get_host_IP_address(theProps.get("ipEchoService"))
+            if dev.deviceTypeId == "publicIP":
+                ipAddress = get_host_IP_address(theProps.get("ipEchoService"))
+            elif dev.deviceTypeId == "lookupIP":
+                ipAddress = lookup_IP_address(theProps.get("domainName"))
+            # update states
             if ipAddress:
-                if not dev.states["onOffState"]:
-                    newStates.append({'key':'onOffState','value':True})
-                if dev.states["ipAddress"] != ipAddress:
-                    newStates.append({'key':'ipAddress','value':ipAddress})
-                if dev.states["ipAddressUi"] != ipAddress:
-                    newStates.append({'key':'ipAddressUi','value':ipAddress})
+                newStates.append({'key':'onOffState','value':True})
+                newStates.append({'key':'ipAddress','value':ipAddress})
+                newStates.append({'key':'ipAddressUi','value':ipAddress})
                 newStates.append({'key':'lastSuccess','value':unicode(indigo.server.getTime())})
             else:
-                if dev.states["onOffState"]:
-                    newStates.append({'key':'onOffState','value':False})
-                if dev.states["ipAddressUi"] != "N/A":
-                    newStates.append({'key':'ipAddressUi','value':"N/A"})
+                newStates.append({'key':'onOffState','value':False})
+                newStates.append({'key':'ipAddressUi','value':"N/A"})
                 newStates.append({'key':'lastFail','value':unicode(indigo.server.getTime())})
         # update device
         dev.updateStatesOnServer(newStates)
@@ -268,6 +278,7 @@ class Plugin(indigo.PluginBase):
     def actionControlSensor(self, action, dev):
         self.logger.debug(u"actionControlSensor: "+dev.name)
         if action.sensorAction == indigo.kUniversalAction.RequestStatus:
+            self.logger.info('"%s" status request' % dev.name)
             self.updateDeviceStatus(dev)
         else:
             self.logger.error("Unknown action: "+unicode(action.sensorAction))
@@ -282,9 +293,17 @@ def do_ping(server):
 
 def get_host_IP_address(ipEchoService):
     cmd = "curl -m 15 -s %s | grep -o '[0-9][0-9]*.[0-9][0-9]*.[0-9][0-9]*.[0-9][0-9]*'" % cmd_quote(ipEchoService)
-    result = do_shell_script(cmd)
-    if result[0]:
-        return result[1]
+    result, ipAdress = do_shell_script(cmd)
+    if result:
+        return ipAdress
+    else:
+        return ''
+
+def lookup_IP_address(domain):
+    cmd = "dig +short %s" % cmd_quote(domain)
+    result, ipAdress = do_shell_script(cmd)
+    if result:
+        return ipAdress
     else:
         return ''
 
@@ -328,7 +347,7 @@ def is_valid_ipv6_address(address):
     return True
 
 # http://stackoverflow.com/questions/7160737/python-how-to-validate-a-url-in-python-malformed-or-not#7160819
-def is_valid(url, qualifying=None):
+def is_valid_url(url, qualifying=None):
     min_attributes = ('scheme', 'netloc')
     qualifying = min_attributes if qualifying is None else qualifying
     token = urlparse.urlparse(url)
