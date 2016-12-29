@@ -19,10 +19,8 @@ except ImportError:
 # our global name space by the host process.
 
 ###############################################################################
-# globals
-
-serverFields = ["checkServer1","checkServer2","checkServer3","checkServer4",
-                "checkServer5","checkServer6","checkServer7","checkServer8"]
+# these are used to update existing devices when plugin changes, 
+# and also to create sample devices.
 
 latestStateList = {
     "onlineSensor": (
@@ -71,6 +69,9 @@ defaultProps = {
         "domainName": "",
         },
     }
+
+serverFields = ["checkServer1","checkServer2","checkServer3","checkServer4",
+                "checkServer5","checkServer6","checkServer7","checkServer8"]
 
 ################################################################################
 class Plugin(indigo.PluginBase):
@@ -179,7 +180,7 @@ class Plugin(indigo.PluginBase):
     def updateDeviceProps(self, dev):
         theProps = dev.pluginProps
         for key, value in defaultProps[dev.deviceTypeId].items():
-            if (key not in serverFields) and((key not in theProps) or not theProps[key]):
+            if (key not in serverFields) and ((key not in theProps) or not theProps[key]):
                 theProps[key] = value
         if theProps != dev.pluginProps:
             dev.replacePluginPropsOnServer(theProps)
@@ -205,6 +206,7 @@ class Plugin(indigo.PluginBase):
                     newStates.append({'key':'lastUp','value':unicode(indigo.server.getTime())})
                 else:
                     newStates.append({'key':'lastDn','value':unicode(indigo.server.getTime())})
+                self.logger.info('"%s" %s' %(dev.name, dev.states["onOffState"]))
         elif dev.deviceTypeId in ("publicIP","lookupIP"):
             # get IP address
             if dev.deviceTypeId == "publicIP":
@@ -213,6 +215,8 @@ class Plugin(indigo.PluginBase):
                 ipAddress = lookup_IP_address(theProps.get("domainName"))
             # update states
             if ipAddress:
+                if ipAddress != dev.states["ipAddress"]:
+                    self.logger.info('"%s" new IP Address: %s' % (dev.name, ipAddress))
                 newStates.append({'key':'onOffState','value':True})
                 newStates.append({'key':'ipAddress','value':ipAddress})
                 newStates.append({'key':'ipAddressUi','value':ipAddress})
@@ -292,17 +296,17 @@ def do_ping(server):
 
 def get_host_IP_address(ipEchoService):
     cmd = "curl -m 15 -s %s | grep -o '[0-9][0-9]*.[0-9][0-9]*.[0-9][0-9]*.[0-9][0-9]*'" % cmd_quote(ipEchoService)
-    result, ipAdress = do_shell_script(cmd)
+    result, ipAddress = do_shell_script(cmd)
     if result:
-        return ipAdress
+        return ipAddress
     else:
         return ''
 
 def lookup_IP_address(domain):
     cmd = "dig +short %s" % cmd_quote(domain)
-    result, ipAdress = do_shell_script(cmd)
+    result, ipAddress = do_shell_script(cmd)
     if result:
-        return ipAdress
+        return ipAddress
     else:
         return ''
 
