@@ -163,6 +163,7 @@ class Plugin(indigo.PluginBase):
         startTime = datetime.now()
         theProps = dev.pluginProps
         newStates = []
+        
         if dev.deviceTypeId == "onlineSensor":
             servers = filter(None, (theProps.get(key) for key in serverFields))
             # check servers
@@ -179,6 +180,7 @@ class Plugin(indigo.PluginBase):
                 else:
                     newStates.append({'key':'lastDn','value':unicode(indigo.server.getTime())})
                 self.logger.info('"%s" %s' %(dev.name, ['off','on'][online]))
+        
         elif dev.deviceTypeId in ("publicIP","lookupIP"):
             # get IP address
             if dev.deviceTypeId == "publicIP":
@@ -197,6 +199,7 @@ class Plugin(indigo.PluginBase):
                 newStates.append({'key':'onOffState','value':False})
                 newStates.append({'key':'ipAddressUi','value':"N/A"})
                 newStates.append({'key':'lastFail','value':unicode(indigo.server.getTime())})
+        
         # update device
         dev.updateStatesOnServer(newStates)
         dev.refreshFromServer()
@@ -270,18 +273,12 @@ def do_ping(server):
 def get_host_IP_address(ipEchoService):
     cmd = "curl -m 15 -s %s | grep -o '[0-9][0-9]*.[0-9][0-9]*.[0-9][0-9]*.[0-9][0-9]*'" % cmd_quote(ipEchoService)
     result, ipAddress = do_shell_script(cmd)
-    if result:
-        return ipAddress
-    else:
-        return ''
+    return ['',ipAddress][result]
 
 def lookup_IP_address(domain):
     cmd = "dig +short %s" % cmd_quote(domain)
     result, ipAddress = do_shell_script(cmd)
-    if result:
-        return ipAddress
-    else:
-        return ''
+    return ['',ipAddress][result]
 
 def do_shell_script (cmd):
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
