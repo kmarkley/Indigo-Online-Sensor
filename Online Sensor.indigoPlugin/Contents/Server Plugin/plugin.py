@@ -83,7 +83,11 @@ class Plugin(indigo.PluginBase):
             while True:
                 loopTime = datetime.now()
                 for devId, dev in self.deviceDict.items():
-                    if dev.lastChanged + timedelta(minutes=int(dev.pluginProps["updateFrequency"])) < loopTime:
+                    try:
+                        lastCheck = datetime.strptime(dev.states['lastCheck'], '%Y-%m-%d %H:%M:%S.%f')
+                    except:
+                        lastCheck = datetime(1,1,1)
+                    if lastCheck + timedelta(minutes=int(dev.pluginProps['updateFrequency'])) < loopTime:
                         self.updateDeviceStatus(dev)
                 self.sleep((loopTime+timedelta(seconds=10)-datetime.now()).total_seconds())
         except self.StopThread:
@@ -114,14 +118,6 @@ class Plugin(indigo.PluginBase):
     def validateDeviceConfigUi(self, valuesDict, typeId, devId, runtime=False):
         self.logger.debug(u"validateDeviceConfigUi: " + typeId)
         errorsDict = indigo.Dict()
-        
-        if valuesDict.get("updateFrequency","") == "":
-            errorsDict["updateFrequency"] = "Update Frequency is required"
-        elif not valuesDict.get("updateFrequency","").isdigit():
-            errorsDict["updateFrequency"] = "Update Frequency must be a positive integer"
-        elif int(valuesDict.get("updateFrequency","")) == 0:
-            errorsDict["updateFrequency"] = "Update Frequency may not be zero"
-        
         
         if typeId == "onlineSensor":
             for key, value in valuesDict.items():
@@ -160,9 +156,9 @@ class Plugin(indigo.PluginBase):
     
     def updateDeviceStatus(self,dev):
         self.logger.debug(u"updateDeviceStatus: " + dev.name)
-        startTime = datetime.now()
+        statusUpdateTime = datetime.now()
         theProps = dev.pluginProps
-        newStates = []
+        newStates = [{'key':'lastCheck','value':unicode(statusUpdateTime)}]
         
         if dev.deviceTypeId == "onlineSensor":
             servers = filter(None, (theProps.get(key) for key in serverFields))
@@ -176,9 +172,9 @@ class Plugin(indigo.PluginBase):
             newStates.append({'key':'onOffState','value':online})
             if online != dev.onState:
                 if online:
-                    newStates.append({'key':'lastUp','value':unicode(indigo.server.getTime())})
+                    newStates.append({'key':'lastUp','value':unicode(statusUpdateTime)})
                 else:
-                    newStates.append({'key':'lastDn','value':unicode(indigo.server.getTime())})
+                    newStates.append({'key':'lastDown','value':unicode(statusUpdateTime)})
                 self.logger.info('"%s" %s' %(dev.name, ['off','on'][online]))
         
         elif dev.deviceTypeId in ("publicIP","lookupIP"):
@@ -189,21 +185,20 @@ class Plugin(indigo.PluginBase):
                 ipAddress = lookup_IP_address(theProps.get("domainName"))
             # update states
             if ipAddress:
-                if ipAddress != dev.states["ipAddress"]:
+                if (ipAddress != dev.states["ipAddress"]) or (not dev.states['lastChange']):
                     self.logger.info('"%s" new IP Address: %s' % (dev.name, ipAddress))
+                    newStates.append({'key':'lastChange','value':unicode(statusUpdateTime)})
                 newStates.append({'key':'onOffState','value':True})
                 newStates.append({'key':'ipAddress','value':ipAddress})
                 newStates.append({'key':'ipAddressUi','value':ipAddress})
-                newStates.append({'key':'lastSuccess','value':unicode(indigo.server.getTime())})
             else:
                 newStates.append({'key':'onOffState','value':False})
                 newStates.append({'key':'ipAddressUi','value':"N/A"})
-                newStates.append({'key':'lastFail','value':unicode(indigo.server.getTime())})
+                newStates.append({'key':'lastFail','value':unicode(statusUpdateTime)})
         
         # update device
         dev.updateStatesOnServer(newStates)
-        dev.refreshFromServer()
-        self.logger.debug("updateDeviceStatus: %s seconds" % (datetime.now()-startTime).total_seconds() )
+        self.logger.debug("updateDeviceStatus: %s seconds" % (datetime.now()-statusUpdateTime).total_seconds() )
         
     
     ########################################

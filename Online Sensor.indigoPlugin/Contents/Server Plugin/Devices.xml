@@ -36,8 +36,17 @@
             <Field id="spacer1" type="label">
                 <Label> </Label>
             </Field>
-            <Field id="updateFrequency" type="textfield" defaultValue="5">
-                <Label>Update Frequency (minutes):</Label>
+            <Field id="updateFrequency" type="menu" defaultValue="5">
+                <Label>Update Frequency:</Label>
+                <List>
+                  <Option value="1">1 Minute</Option>
+                  <Option value="2">2 Minutes</Option>
+                  <Option value="5">5 Minutes</Option>
+                  <Option value="10">10 Minutes</Option>
+                  <Option value="15">15 Minutes</Option>
+                  <Option value="30">30 Minutes</Option>
+                  <Option value="60">60 Minutes</Option>
+                </List>
             </Field>
 	        <Field id="sensorLogic" type="menu" defaultValue="ANY">
                 <Label>Sensor Logic:</Label>
@@ -54,10 +63,16 @@
                 <ControlPageLabel>Last Up</ControlPageLabel>
                 <readonly>YES</readonly>
             </State>
-            <State id="lastDn">
+            <State id="lastDown">
                 <ValueType>String</ValueType>
                 <TriggerLabel>Last Down</TriggerLabel>
                 <ControlPageLabel>Last Down</ControlPageLabel>
+                <readonly>YES</readonly>
+            </State>
+            <State id="lastCheck">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Last Checked</TriggerLabel>
+                <ControlPageLabel>Last Checked</ControlPageLabel>
                 <readonly>YES</readonly>
             </State>
 	    </States>
@@ -68,8 +83,17 @@
             <Field id="ipEchoService" type="textfield" defaultValue="http://ipecho.net/plain">
                 <Label>IP Echo Service (full URL):</Label>
             </Field>
-            <Field id="updateFrequency" type="textfield" defaultValue="15">
-                <Label>Update Frequency (minutes):</Label>
+            <Field id="updateFrequency" type="menu" defaultValue="5">
+                <Label>Update Frequency:</Label>
+                <List>
+                  <Option value="1">1 Minute</Option>
+                  <Option value="2">2 Minutes</Option>
+                  <Option value="5">5 Minutes</Option>
+                  <Option value="10">10 Minutes</Option>
+                  <Option value="15">15 Minutes</Option>
+                  <Option value="30">30 Minutes</Option>
+                  <Option value="60">60 Minutes</Option>
+                </List>
             </Field>
 	    </ConfigUI>
 	    <States>
@@ -85,7 +109,7 @@
                 <ControlPageLabel>IP Address UI</ControlPageLabel>
                 <readonly>YES</readonly>
             </State>
-            <State id="lastSuccess">
+            <State id="lastChange">
                 <ValueType>String</ValueType>
                 <TriggerLabel>Last Success</TriggerLabel>
                 <ControlPageLabel>Last Success</ControlPageLabel>
@@ -95,6 +119,12 @@
                 <ValueType>String</ValueType>
                 <TriggerLabel>Last Fail</TriggerLabel>
                 <ControlPageLabel>Last Fail</ControlPageLabel>
+                <readonly>YES</readonly>
+            </State>
+            <State id="lastCheck">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Last Checked</TriggerLabel>
+                <ControlPageLabel>Last Checked</ControlPageLabel>
                 <readonly>YES</readonly>
             </State>
         </States>
@@ -105,8 +135,17 @@
             <Field id="domainName" type="textfield">
                 <Label>Domain Name:</Label>
             </Field>
-            <Field id="updateFrequency" type="textfield" defaultValue="15">
-                <Label>Update Frequency (minutes):</Label>
+            <Field id="updateFrequency" type="menu" defaultValue="5">
+                <Label>Update Frequency:</Label>
+                <List>
+                  <Option value="1">1 Minute</Option>
+                  <Option value="2">2 Minutes</Option>
+                  <Option value="5">5 Minutes</Option>
+                  <Option value="10">10 Minutes</Option>
+                  <Option value="15">15 Minutes</Option>
+                  <Option value="30">30 Minutes</Option>
+                  <Option value="60">60 Minutes</Option>
+                </List>
             </Field>
 	    </ConfigUI>
 	    <States>
@@ -122,7 +161,7 @@
                 <ControlPageLabel>IP Address UI</ControlPageLabel>
                 <readonly>YES</readonly>
             </State>
-            <State id="lastSuccess">
+            <State id="lastChange">
                 <ValueType>String</ValueType>
                 <TriggerLabel>Last Success</TriggerLabel>
                 <ControlPageLabel>Last Success</ControlPageLabel>
@@ -132,6 +171,12 @@
                 <ValueType>String</ValueType>
                 <TriggerLabel>Last Fail</TriggerLabel>
                 <ControlPageLabel>Last Fail</ControlPageLabel>
+                <readonly>YES</readonly>
+            </State>
+            <State id="lastCheck">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Last Checked</TriggerLabel>
+                <ControlPageLabel>Last Checked</ControlPageLabel>
                 <readonly>YES</readonly>
             </State>
         </States>

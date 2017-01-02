@@ -44,8 +44,8 @@ Timestamp of the last time the device switched to the **ON** state.
 * **Last Down**  
 Timestamp of the last time the device switched to the **OFF** state.
 
-* **Next Update**  
-Seconds after epoch when the next update is scheduled.  Used internally.
+* **Last Checked**  
+Timestamp of the last status update.
 
 * **onOffState**  
 Whether Indigo is connected to the internet.
@@ -68,14 +68,14 @@ The apparent public IP address of the machine running Indigo Server.  **Note tha
 * **IP Address UI**  
 Same as above, except that when the device fails to connect the UI displays "N/A".
 
-* **Last Success**  
-Timestamp of the last time the device successfully optained an IP address.
+* **Last Change**  
+Timestamp of the last time the device optained a new IP address.
 
 * **Last Fail**  
 Timestamp of the last time the device failed to optained an IP address.
 
-* **Next Update**  
-Seconds after epoch when next update is scheduled.  Used internally.
+* **Last Checked**  
+Timestamp of the last status update.
 
 * **onOffState**  
 If the last attempt was successful.
@@ -93,19 +93,19 @@ Define how often the device will check (ping) the server(s).  5 minute minimum.
 #### States
 
 * **IP Address**  
-The apparent public IP address of the machine running Indigo Server.  **Note that the state does not change until a new positive result is obtained.**  If the device fails to optain an IP, the old state will persist. This makes it useful as a trigger for updating DDNS.
+The IP address of the specified domain.  **Note that the state does not change until a new positive result is obtained.**  If the device fails to optain an IP, the old state will persist. This makes it useful as a trigger for updating DDNS.
 
 * **IP Address UI**  
 Same as above, except that when the device fails to connect the UI displays "N/A".
 
-* **Last Success**  
-Timestamp of the last time the device successfully optained an IP address.
+* **Last Change**  
+Timestamp of the last time the device optained a new IP address.
 
 * **Last Fail**  
 Timestamp of the last time the device failed to optained an IP address.
 
-* **Next Update**  
-Seconds after epoch when next update is scheduled.  Used internally.
+* **Last Checked**  
+Timestamp of the last status update.
 
 * **onOffState**  
 If the last attempt was successful.
