@@ -69,12 +69,6 @@
                 <ControlPageLabel>Last Down</ControlPageLabel>
                 <readonly>YES</readonly>
             </State>
-            <State id="lastCheck">
-                <ValueType>String</ValueType>
-                <TriggerLabel>Last Checked</TriggerLabel>
-                <ControlPageLabel>Last Checked</ControlPageLabel>
-                <readonly>YES</readonly>
-            </State>
 	    </States>
     </Device>
     <Device type="sensor" id="publicIP">
@@ -115,18 +109,6 @@
                 <ControlPageLabel>Last Success</ControlPageLabel>
                 <readonly>YES</readonly>
             </State>
-            <State id="lastFail">
-                <ValueType>String</ValueType>
-                <TriggerLabel>Last Fail</TriggerLabel>
-                <ControlPageLabel>Last Fail</ControlPageLabel>
-                <readonly>YES</readonly>
-            </State>
-            <State id="lastCheck">
-                <ValueType>String</ValueType>
-                <TriggerLabel>Last Checked</TriggerLabel>
-                <ControlPageLabel>Last Checked</ControlPageLabel>
-                <readonly>YES</readonly>
-            </State>
         </States>
     </Device>
     <Device type="sensor" id="lookupIP">
@@ -165,18 +147,6 @@
                 <ValueType>String</ValueType>
                 <TriggerLabel>Last Success</TriggerLabel>
                 <ControlPageLabel>Last Success</ControlPageLabel>
-                <readonly>YES</readonly>
-            </State>
-            <State id="lastFail">
-                <ValueType>String</ValueType>
-                <TriggerLabel>Last Fail</TriggerLabel>
-                <ControlPageLabel>Last Fail</ControlPageLabel>
-                <readonly>YES</readonly>
-            </State>
-            <State id="lastCheck">
-                <ValueType>String</ValueType>
-                <TriggerLabel>Last Checked</TriggerLabel>
-                <ControlPageLabel>Last Checked</ControlPageLabel>
                 <readonly>YES</readonly>
             </State>
         </States>

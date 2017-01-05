@@ -82,13 +82,11 @@ class Plugin(indigo.PluginBase):
         try:
             while True:
                 loopTime = datetime.now()
-                for devId, dev in self.deviceDict.items():
-                    try:
-                        lastCheck = datetime.strptime(dev.states['lastCheck'], '%Y-%m-%d %H:%M:%S.%f')
-                    except:
-                        lastCheck = datetime(1,1,1)
-                    if lastCheck + timedelta(minutes=int(dev.pluginProps['updateFrequency'])) < loopTime:
+                for devId in self.deviceDict:
+                    dev = self.deviceDict[devId]['dev']
+                    if self.deviceDict[devId]['lastCheck'] + timedelta(minutes=int(dev.pluginProps['updateFrequency'])) < loopTime:
                         self.updateDeviceStatus(dev)
+                        self.deviceDict[devId]['lastCheck'] = loopTime
                 self.sleep((loopTime+timedelta(seconds=10)-datetime.now()).total_seconds())
         except self.StopThread:
             pass    # Optionally catch the StopThread exception and do any needed cleanup.
@@ -104,7 +102,7 @@ class Plugin(indigo.PluginBase):
         if dev.version != self.pluginVersion:
             self.updateDeviceVersion(dev)
         if dev.id not in self.deviceDict:
-            self.deviceDict[dev.id] = dev
+            self.deviceDict[dev.id] = {'dev':dev, 'lastCheck':datetime(1,1,1)}
     
     def deviceStopComm(self, dev):
         self.logger.debug(u"deviceStopComm: "+dev.name)
@@ -158,7 +156,7 @@ class Plugin(indigo.PluginBase):
         self.logger.debug(u"updateDeviceStatus: " + dev.name)
         statusUpdateTime = datetime.now()
         theProps = dev.pluginProps
-        newStates = [{'key':'lastCheck','value':unicode(statusUpdateTime)}]
+        newStates = []
         
         if dev.deviceTypeId == "onlineSensor":
             servers = filter(None, (theProps.get(key) for key in serverFields))
@@ -184,17 +182,17 @@ class Plugin(indigo.PluginBase):
             elif dev.deviceTypeId == "lookupIP":
                 ipAddress = lookup_IP_address(theProps.get("domainName"))
             # update states
-            if ipAddress:
-                if (ipAddress != dev.states["ipAddress"]) or (not dev.states['lastChange']):
+            
+            if (ipAddress != dev.states["ipAddress"]):
+                newStates.append({'key':'lastChange','value':unicode(statusUpdateTime)})
+                if ipAddress:
                     self.logger.info('"%s" new IP Address: %s' % (dev.name, ipAddress))
-                    newStates.append({'key':'lastChange','value':unicode(statusUpdateTime)})
-                newStates.append({'key':'onOffState','value':True})
-                newStates.append({'key':'ipAddress','value':ipAddress})
-                newStates.append({'key':'ipAddressUi','value':ipAddress})
-            else:
-                newStates.append({'key':'onOffState','value':False})
-                newStates.append({'key':'ipAddressUi','value':"N/A"})
-                newStates.append({'key':'lastFail','value':unicode(statusUpdateTime)})
+                    newStates.append({'key':'onOffState','value':True})
+                    newStates.append({'key':'ipAddress','value':ipAddress})
+                    newStates.append({'key':'ipAddressUi','value':ipAddress})
+                else:
+                    newStates.append({'key':'onOffState','value':False})
+                    newStates.append({'key':'ipAddressUi','value':"not available"})
         
         # update device
         dev.updateStatesOnServer(newStates)
