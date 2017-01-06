@@ -195,7 +195,8 @@ class Plugin(indigo.PluginBase):
                     newStates.append({'key':'ipAddressUi','value':"not available"})
         
         # update device
-        dev.updateStatesOnServer(newStates)
+        if newStates:
+            dev.updateStatesOnServer(newStates)
         self.logger.debug("updateDeviceStatus: %s seconds" % (datetime.now()-statusUpdateTime).total_seconds() )
         
     

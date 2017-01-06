@@ -7,7 +7,7 @@ There are a few main uses:
 1. Determine if the machine running Indigo Server is connected to the internet.
 2. Determine if a particular online service is available.
 3. Check if the external IP address changes to trigger a DDNS script
-4. Determine the status of local network resouces. FINGscan is a much more robust tool for this, but if you only have a couple devices you're interested in this might do.
+4. Determine the status of local network resouces. FINGscan is a much more robust tool for this, but if there are only a couple devices you're interested in, this might do.
 
 ## Easy Setup
 
@@ -21,7 +21,7 @@ Most people will only need one device of each type, and default setting should w
 
 ## Devices
 
-The plugin defines two new types of Device, Online Sensors, and Public IPs.
+The plugin defines three Device types: Online Sensor, Public IP, and Lookup IP.
 
 ### 'Online Sensor' devices
 
@@ -43,9 +43,6 @@ Timestamp of the last time the device switched to the **ON** state.
 
 * **Last Down**  
 Timestamp of the last time the device switched to the **OFF** state.
-
-* **Last Checked**  
-Timestamp of the last status update.
 
 * **onOffState**  
 Whether Indigo is connected to the internet.
@@ -71,12 +68,6 @@ Same as above, except that when the device fails to connect the UI displays "N/A
 * **Last Change**  
 Timestamp of the last time the device optained a new IP address.
 
-* **Last Fail**  
-Timestamp of the last time the device failed to optained an IP address.
-
-* **Last Checked**  
-Timestamp of the last status update.
-
 * **onOffState**  
 If the last attempt was successful.
 
@@ -100,12 +91,6 @@ Same as above, except that when the device fails to connect the UI displays "N/A
 
 * **Last Change**  
 Timestamp of the last time the device optained a new IP address.
-
-* **Last Fail**  
-Timestamp of the last time the device failed to optained an IP address.
-
-* **Last Checked**  
-Timestamp of the last status update.
 
 * **onOffState**  
 If the last attempt was successful.
