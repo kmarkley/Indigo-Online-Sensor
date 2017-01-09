@@ -58,26 +58,29 @@ class Plugin(indigo.PluginBase):
         indigo.PluginBase.__del__(self)
 
     ########################################
-    # Plugin Methods
+    # Start, Stop and Config changes
     ########################################
     def startup(self):
         self.debug = self.pluginPrefs.get("showDebugInfo",False)
-        self.logger.debug(u"startup")
+        self.logger.debug("startup")
         if self.debug:
             self.logger.debug("Debug logging enabled")
         self.deviceDict = dict()
-        self.logger.debug("version: "+self.pluginVersion)
 
+    ########################################
     def shutdown(self):
-        self.logger.debug(u"shutdown")
+        self.logger.debug("shutdown")
+        self.pluginPrefs['showDebugInfo'] = self.debug
 
+    ########################################
     def closedPrefsConfigUi(self, valuesDict, userCancelled):
-        self.logger.debug(u"closedPrefsConfigUi")
+        self.logger.debug("closedPrefsConfigUi")
         if not userCancelled:
             self.debug = valuesDict.get("showDebugInfo",False)
             if self.debug:
                 self.logger.debug("Debug logging enabled")
     
+    ########################################
     def runConcurrentThread(self):
         try:
             while True:
@@ -90,31 +93,26 @@ class Plugin(indigo.PluginBase):
                 self.sleep((loopTime+timedelta(seconds=10)-datetime.now()).total_seconds())
         except self.StopThread:
             pass    # Optionally catch the StopThread exception and do any needed cleanup.
-        
-
     
     ########################################
     # Device Methods
     ########################################
-    
     def deviceStartComm(self, dev):
-        self.logger.debug(u"deviceStartComm: "+dev.name)
+        self.logger.debug("deviceStartComm: "+dev.name)
         if dev.version != self.pluginVersion:
             self.updateDeviceVersion(dev)
         if dev.id not in self.deviceDict:
             self.deviceDict[dev.id] = {'dev':dev, 'lastCheck':datetime(1,1,1)}
     
+    ########################################
     def deviceStopComm(self, dev):
-        self.logger.debug(u"deviceStopComm: "+dev.name)
+        self.logger.debug("deviceStopComm: "+dev.name)
         if dev.id in self.deviceDict:
             del self.deviceDict[dev.id]
             
-    def didDeviceCommPropertyChange(self, origDev, newDev):
-        # not necessary to re-start device on changes
-        return False
-        
+    ########################################
     def validateDeviceConfigUi(self, valuesDict, typeId, devId, runtime=False):
-        self.logger.debug(u"validateDeviceConfigUi: " + typeId)
+        self.logger.debug("validateDeviceConfigUi: " + typeId)
         errorsDict = indigo.Dict()
         
         if typeId == "onlineSensor":
@@ -136,7 +134,9 @@ class Plugin(indigo.PluginBase):
         else:
             return (True, valuesDict)
     
+    ########################################
     def updateDeviceVersion(self, dev):
+        self.logger.debug("updateDeviceVersion: " + dev.name)
         theProps = dev.pluginProps
         # update states
         dev.stateListOrDisplayStateIdChanged()
@@ -152,8 +152,9 @@ class Plugin(indigo.PluginBase):
         theProps["version"] = self.pluginVersion
         dev.replacePluginPropsOnServer(theProps)
     
+    ########################################
     def updateDeviceStatus(self,dev):
-        self.logger.debug(u"updateDeviceStatus: " + dev.name)
+        self.logger.debug("updateDeviceStatus: " + dev.name)
         statusUpdateTime = datetime.now()
         theProps = dev.pluginProps
         newStates = []
@@ -172,7 +173,7 @@ class Plugin(indigo.PluginBase):
                 if online:
                     newStates.append({'key':'lastUp','value':unicode(statusUpdateTime)})
                 else:
-                    newStates.append({'key':'lastDown','value':unicode(statusUpdateTime)})
+                    newStates.append({'key':'lastDn','value':unicode(statusUpdateTime)})
                 self.logger.info('"%s" %s' %(dev.name, ['off','on'][online]))
         
         elif dev.deviceTypeId in ("publicIP","lookupIP"):
@@ -182,30 +183,25 @@ class Plugin(indigo.PluginBase):
             elif dev.deviceTypeId == "lookupIP":
                 ipAddress = lookup_IP_address(theProps.get("domainName"))
             # update states
-            
-            if (ipAddress != dev.states["ipAddress"]):
-                newStates.append({'key':'lastChange','value':unicode(statusUpdateTime)})
-                if ipAddress:
+            if ipAddress:
+                newStates.append({'key':'onOffState','value':True})
+                newStates.append({'key':'ipAddress','value':ipAddress})
+                newStates.append({'key':'ipAddressUi','value':ipAddress})
+                if (ipAddress != dev.states["ipAddress"]):
+                    newStates.append({'key':'lastChange','value':unicode(statusUpdateTime)})
                     self.logger.info('"%s" new IP Address: %s' % (dev.name, ipAddress))
-                    newStates.append({'key':'onOffState','value':True})
-                    newStates.append({'key':'ipAddress','value':ipAddress})
-                    newStates.append({'key':'ipAddressUi','value':ipAddress})
-                else:
-                    newStates.append({'key':'onOffState','value':False})
-                    newStates.append({'key':'ipAddressUi','value':"not available"})
-        
+            else:
+                newStates.append({'key':'onOffState','value':False})
+                newStates.append({'key':'ipAddressUi','value':"not available"})
         # update device
-        if newStates:
-            dev.updateStatesOnServer(newStates)
+        dev.updateStatesOnServer(newStates)
         self.logger.debug("updateDeviceStatus: %s seconds" % (datetime.now()-statusUpdateTime).total_seconds() )
-        
     
     ########################################
     # Menu Methods
     ########################################
-    
     def createSampleOnlineSensor(self, valuesDict="", typeId=""):
-        self.logger.debug(u"createSampleOnlineSensor: " + valuesDict.get("sampleName"))
+        self.logger.debug("createSampleOnlineSensor: " + valuesDict.get("sampleName"))
         errorsDict = indigo.Dict()
         
         theName = valuesDict.get("sampleName","Online Sensor Sample Device")
@@ -224,8 +220,9 @@ class Plugin(indigo.PluginBase):
                 )
             return (True, valuesDict)
     
+    ########################################
     def createSamplePublicIP(self, valuesDict="", typeId=""):
-        self.logger.debug(u"createSamplePublicIP: " + valuesDict.get("sampleName"))
+        self.logger.debug("createSamplePublicIP: " + valuesDict.get("sampleName"))
         errorsDict = indigo.Dict()
         
         theName = valuesDict.get("sampleName","Public IP Sample Device")
@@ -247,19 +244,28 @@ class Plugin(indigo.PluginBase):
     ########################################
     # Action Methods
     ########################################
-    
     def actionControlSensor(self, action, dev):
-        self.logger.debug(u"actionControlSensor: "+dev.name)
+        self.logger.debug("actionControlSensor: "+dev.name)
         if action.sensorAction == indigo.kUniversalAction.RequestStatus:
             self.logger.info('"%s" status request' % dev.name)
             self.updateDeviceStatus(dev)
         else:
             self.logger.error("Unknown action: "+unicode(action.sensorAction))
     
+    ########################################
+    # Menu Methods
+    ########################################
+    def toggleDebug(self):
+        if self.debug:
+            self.logger.debug("Debug logging disabled")
+            self.debug = False
+        else:
+            self.debug = True
+            self.logger.debug("Debug logging enabled")
+        
 ########################################
 # Utilities
 ########################################
-
 def do_ping(server):
     cmd = "/sbin/ping -c1 -t1 %s" % cmd_quote(server)
     return (do_shell_script(cmd)[0])
@@ -279,6 +285,7 @@ def do_shell_script (cmd):
     out, err = p.communicate()
     return (not bool(p.returncode)), out.rstrip()
 
+########################################
 # http://stackoverflow.com/questions/2532053/validate-a-hostname-string
 def is_valid_hostname(hostname):
     if hostname[-1] == ".":

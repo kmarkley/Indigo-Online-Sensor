@@ -63,7 +63,7 @@
                 <ControlPageLabel>Last Up</ControlPageLabel>
                 <readonly>YES</readonly>
             </State>
-            <State id="lastDown">
+            <State id="lastDn">
                 <ValueType>String</ValueType>
                 <TriggerLabel>Last Down</TriggerLabel>
                 <ControlPageLabel>Last Down</ControlPageLabel>
