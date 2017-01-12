@@ -19,8 +19,8 @@ except ImportError:
 # our global name space by the host process.
 
 ###############################################################################
-# these are used to update existing devices when plugin changes, 
-# and also to create sample devices.
+# these are used to create sample devices, 
+# and also to update existing devices when plugin changes.
 
 defaultProps = {
     "onlineSensor": {
@@ -115,16 +115,19 @@ class Plugin(indigo.PluginBase):
         self.logger.debug("validateDeviceConfigUi: " + typeId)
         errorsDict = indigo.Dict()
         
+        # ONLINE SENSOR
         if typeId == "onlineSensor":
             for key, value in valuesDict.items():
                 if (key in serverFields) and value:
                     if not any([is_valid_hostname(value),is_valid_ipv4_address(value),is_valid_ipv6_address(value)]):
                         errorsDict[key] = "Not valid IP or host name"
             
+        # PUBLIC IP
         elif typeId == "publicIP":
             if not is_valid_url(valuesDict.get("ipEchoService")):
                 errorsDict["ipEchoService"] = "Not a valid URL"
             
+        # LOOKUP IP
         elif typeId == "lookupIP":
             if not is_valid_hostname(valuesDict.get("domainName")):
                 errorsDict["domainName"] = "Not a valid domain"
@@ -159,6 +162,7 @@ class Plugin(indigo.PluginBase):
         theProps = dev.pluginProps
         newStates = []
         
+        # ONLINE SENSOR
         if dev.deviceTypeId == "onlineSensor":
             servers = filter(None, (theProps.get(key) for key in serverFields))
             # check servers
@@ -168,32 +172,37 @@ class Plugin(indigo.PluginBase):
             else:
                 online = all(do_ping(server) for server in servers)
             # update if changed
-            newStates.append({'key':'onOffState','value':online})
             if online != dev.onState:
+                self.logger.info('"%s" %s' % (dev.name, ['off','on'][online]))
                 if online:
                     newStates.append({'key':'lastUp','value':unicode(statusUpdateTime)})
                 else:
                     newStates.append({'key':'lastDn','value':unicode(statusUpdateTime)})
-                self.logger.info('"%s" %s' %(dev.name, ['off','on'][online]))
         
+        # PUBLIC IP, LOOKUP IP
         elif dev.deviceTypeId in ("publicIP","lookupIP"):
             # get IP address
             if dev.deviceTypeId == "publicIP":
                 ipAddress = get_host_IP_address(theProps.get("ipEchoService"))
             elif dev.deviceTypeId == "lookupIP":
                 ipAddress = lookup_IP_address(theProps.get("domainName"))
-            # update states
-            if ipAddress:
-                newStates.append({'key':'onOffState','value':True})
-                newStates.append({'key':'ipAddress','value':ipAddress})
-                newStates.append({'key':'ipAddressUi','value':ipAddress})
-                if (ipAddress != dev.states["ipAddress"]):
-                    newStates.append({'key':'lastChange','value':unicode(statusUpdateTime)})
-                    self.logger.info('"%s" new IP Address: %s' % (dev.name, ipAddress))
             else:
-                newStates.append({'key':'onOffState','value':False})
-                newStates.append({'key':'ipAddressUi','value':"not available"})
+                ipAddress = False
+            # update if changed
+            online = bool(ipAddress)
+            if online != dev.onState:
+                self.logger.info('"%s" %s' % (dev.name, ['off','on'][online]))
+                if online:
+                    newStates.append({'key':'ipAddressUi','value':ipAddress})
+                else:
+                    newStates.append({'key':'ipAddressUi','value':"not available"})
+            if online and (ipAddress != dev.states["ipAddress"]):
+                self.logger.info('"%s" new IP Address: %s' % (dev.name, ipAddress))
+                newStates.append({'key':'ipAddress','value':ipAddress})
+                newStates.append({'key':'lastChange','value':unicode(statusUpdateTime)})
+        
         # update device
+        newStates.append({'key':'onOffState','value':online})
         dev.updateStatesOnServer(newStates)
         self.logger.debug("updateDeviceStatus: %s seconds" % (datetime.now()-statusUpdateTime).total_seconds() )
     
@@ -246,11 +255,13 @@ class Plugin(indigo.PluginBase):
     ########################################
     def actionControlSensor(self, action, dev):
         self.logger.debug("actionControlSensor: "+dev.name)
+        # STATUS REQUEST
         if action.sensorAction == indigo.kUniversalAction.RequestStatus:
             self.logger.info('"%s" status request' % dev.name)
             self.updateDeviceStatus(dev)
+        # UNKNOWN
         else:
-            self.logger.error("Unknown action: "+unicode(action.sensorAction))
+            self.logger.debug('"%s" %s request ignored' % (dev.name, unicode(action.sensorAction)))
     
     ########################################
     # Menu Methods
