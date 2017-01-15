@@ -101,8 +101,7 @@ class Plugin(indigo.PluginBase):
         self.logger.debug("deviceStartComm: "+dev.name)
         if dev.version != self.pluginVersion:
             self.updateDeviceVersion(dev)
-        if dev.id not in self.deviceDict:
-            self.deviceDict[dev.id] = {'dev':dev, 'lastCheck':datetime(1,1,1)}
+        self.deviceDict[dev.id] = {'dev':dev, 'lastCheck':datetime(1,1,1)}
     
     ########################################
     def deviceStopComm(self, dev):

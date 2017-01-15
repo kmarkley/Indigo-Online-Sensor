@@ -55,7 +55,7 @@ Whether Indigo is connected to the internet.
 Define the service you want to use.  Defaults to http://ipecho.net/plain
 
 * **Update Frequency (minutes)**  
-Define how often the device will check (ping) the server(s).  5 minute minimum.
+Define how often the device will check for a new IP address.  5 minute minimum.
 
 #### States
 
@@ -79,7 +79,7 @@ If the last attempt was successful.
 Define the domain name to lookup.
 
 * **Update Frequency (minutes)**  
-Define how often the device will check (ping) the server(s).  5 minute minimum.
+Define how often the device will check for a new IP address.  5 minute minimum.
 
 #### States
 
