@@ -4,12 +4,14 @@
 # http://www.indigodomo.com
 
 import indigo
+import threading
 from datetime import datetime, timedelta
 import subprocess
 import re
 import socket
 import urlparse
 from random import shuffle
+import speedtest
 try:
     from shlex import quote as cmd_quote
 except ImportError:
@@ -36,12 +38,17 @@ defaultProps = {
         "sensorLogic":      "ANY",
         },
     "publicIP": {
-        "ipEchoService": "http://ipecho.net/plain",
+        "ipEchoService":    "http://ipecho.net/plain",
         "updateFrequency":  "15",
         },
     "lookupIP": {
-        "domainName": "localhost",
+        "domainName":       "localhost",
         "updateFrequency":  "15",
+        },
+    "speedtest": {
+        "testSelection":    "BOTH",
+        "distanceUnit":     "mi",
+        "updateFrequency":  "360",
         },
     }
 
@@ -65,6 +72,7 @@ class Plugin(indigo.PluginBase):
         self.logger.debug("startup")
         if self.debug:
             self.logger.debug("Debug logging enabled")
+        self.stLock = threading.Lock()
         self.deviceDict = dict()
 
     ########################################
@@ -89,8 +97,7 @@ class Plugin(indigo.PluginBase):
                     dev = self.deviceDict[devId]['dev']
                     if self.deviceDict[devId]['lastCheck'] + timedelta(minutes=int(dev.pluginProps['updateFrequency'])) < loopTime:
                         self.updateDeviceStatus(dev)
-                        self.deviceDict[devId]['lastCheck'] = loopTime
-                self.sleep((loopTime+timedelta(seconds=10)-datetime.now()).total_seconds())
+                self.sleep((loopTime+timedelta(seconds=5)-datetime.now()).total_seconds())
         except self.StopThread:
             pass    # Optionally catch the StopThread exception and do any needed cleanup.
     
@@ -101,7 +108,7 @@ class Plugin(indigo.PluginBase):
         self.logger.debug("deviceStartComm: "+dev.name)
         if dev.version != self.pluginVersion:
             self.updateDeviceVersion(dev)
-        self.deviceDict[dev.id] = {'dev':dev, 'lastCheck':datetime(1,1,1)}
+        self.deviceDict[dev.id] = {'dev':dev, 'lastCheck':dev.lastChanged}
     
     ########################################
     def deviceStopComm(self, dev):
@@ -109,6 +116,15 @@ class Plugin(indigo.PluginBase):
         if dev.id in self.deviceDict:
             del self.deviceDict[dev.id]
             
+    ########################################
+    def didDeviceCommPropertyChange(self, origDev, newDev):
+        if newDev.pluginId == self.pluginId:
+            if newDev.id in self.deviceDict:
+                # update deviceDict, but don't bother restarting device
+                self.deviceDict[newDev.id]['dev'] = newDev
+                return False
+        return True
+    
     ########################################
     def validateDeviceConfigUi(self, valuesDict, typeId, devId, runtime=False):
         self.logger.debug("validateDeviceConfigUi: " + typeId)
@@ -173,10 +189,8 @@ class Plugin(indigo.PluginBase):
             # update if changed
             if online != dev.onState:
                 self.logger.info('"%s" %s' % (dev.name, ['off','on'][online]))
-                if online:
-                    newStates.append({'key':'lastUp','value':unicode(statusUpdateTime)})
-                else:
-                    newStates.append({'key':'lastDn','value':unicode(statusUpdateTime)})
+                newStates.append({'key':['lastDn','lastUp'][online],'value':unicode(statusUpdateTime)})
+            newStates.append({'key':'onOffState','value':online})
         
         # PUBLIC IP, LOOKUP IP
         elif dev.deviceTypeId in ("publicIP","lookupIP"):
@@ -191,30 +205,98 @@ class Plugin(indigo.PluginBase):
             online = bool(ipAddress)
             if online != dev.onState:
                 self.logger.info('"%s" %s' % (dev.name, ['off','on'][online]))
-                if online:
-                    newStates.append({'key':'ipAddressUi','value':ipAddress})
-                else:
-                    newStates.append({'key':'ipAddressUi','value':"not available"})
+                newStates.append({'key':'ipAddressUi','value':["not available",ipAddress][online]})
             if online and (ipAddress != dev.states["ipAddress"]):
                 self.logger.info('"%s" new IP Address: %s' % (dev.name, ipAddress))
                 newStates.append({'key':'ipAddress','value':ipAddress})
                 newStates.append({'key':'lastChange','value':unicode(statusUpdateTime)})
+            newStates.append({'key':'onOffState','value':online})
+        
+        # SPEEDTEST
+        elif dev.deviceTypeId == "speedtest":
+            try:
+                st = threading.Thread(target=self.performSpeedtest, args=(dev,))
+                st.setDaemon(True)
+                st.start()
+            except:
+                self.logger.error("unable to start speedtest thread")
         
         # update device
-        newStates.append({'key':'onOffState','value':online})
         dev.updateStatesOnServer(newStates)
+        self.deviceDict[dev.id]['lastCheck'] = datetime.now()
         self.logger.debug("updateDeviceStatus: %s seconds" % (datetime.now()-statusUpdateTime).total_seconds() )
+    
+    ########################################
+    def performSpeedtest(self, dev):
+        if self.stLock.acquire(False):
+            self.logger.debug("performSpeedtest: %s" % dev.name)
+            speedtestStartTime = datetime.now()
+            newStates = []
+    
+            try:
+                s = speedtest.Speedtest()
+                self.logger.debug("  ...get best server...")
+                s.get_best_server()
+                if dev.pluginProps['testSelection'] in ('DOWN','BOTH'):
+                    self.logger.debug("  ...download...")
+                    s.download()
+                if dev.pluginProps['testSelection'] in ('UP','BOTH'):
+                    self.logger.debug("  ...upload...")
+                    s.upload()
+                self.logger.debug("  ...results...")
+                r = s.results
+            
+                dnld  = r.download/1024./1024.
+                upld  = r.upload/1024./1024.
+                ping  = r.ping
+                dist  = r.server.get('d',0.)
+                unit = dev.pluginProps['distanceUnit']
+            
+                newStates.append({'key':'onOffState',         'value':(dnld+upld!=0.)       })
+                newStates.append({'key':'Mbps_download',      'value':dnld, 'decimalPlaces':2, 'uiValue':'%0.2f Mbps'%dnld })
+                newStates.append({'key':'Mbps_upload',        'value':upld, 'decimalPlaces':2, 'uiValue':'%0.2f Mbps'%upld })
+                newStates.append({'key':'ping_latency',       'value':ping, 'decimalPlaces':2, 'uiValue':'%0.2f ms'  %ping })
+                newStates.append({'key':'server_distance',    'value':dist, 'decimalPlaces':2, 'uiValue':'%0.2f %s'  %(dist,unit) })
+                newStates.append({'key':'raw_download',       'value':r.download                    })
+                newStates.append({'key':'raw_upload',         'value':r.upload                      })
+                newStates.append({'key':'timestamp',          'value':r.timestamp                   })
+                newStates.append({'key':'server_id',          'value':int(r.server.get('id',0))     })
+                newStates.append({'key':'server_latitude',    'value':float(r.server.get('lat',0.)) })
+                newStates.append({'key':'server_longitude',   'value':float(r.server.get('lon',0.)) })
+                newStates.append({'key':'server_name',        'value':r.server.get('name','')       })
+                newStates.append({'key':'server_country',     'value':r.server.get('country','')    })
+                newStates.append({'key':'server_countrycode', 'value':r.server.get('cc','')         })
+                newStates.append({'key':'server_url1',        'value':r.server.get('url','')        })
+                newStates.append({'key':'server_url2',        'value':r.server.get('url2','')       })
+                newStates.append({'key':'server_host',        'value':r.server.get('host','')       })
+                newStates.append({'key':'server_sponsor',     'value':r.server.get('sponsor','')    })
+                newStates.append({'key':'share_link',         'value':r.share()                     })
+        
+            except Exception as e:
+                self.logger.error(e.message)
+                newStates.append({'key':'onOffState','value':False})
+        
+            finally:
+                dev.updateStatesOnServer(newStates)
+                self.deviceDict[dev.id]['lastCheck'] = datetime.now()
+                self.logger.debug("performSpeedtest: %s seconds" % (datetime.now()-speedtestStartTime).total_seconds() )
+                self.stLock.release()
+            
+        else:
+            self.logger.error("speedtest already in progress")
     
     ########################################
     # Menu Methods
     ########################################
-    def createSampleOnlineSensor(self, valuesDict="", typeId=""):
-        self.logger.debug("createSampleOnlineSensor: " + valuesDict.get("sampleName"))
+    def createSampleDevice(self, valuesDict, typeId):
+        self.logger.debug("createSampleDevice: " + valuesDict.get("deviceName"))
         errorsDict = indigo.Dict()
         
-        theName = valuesDict.get("sampleName","Online Sensor Sample Device")
-        if theName in indigo.devices:
-            errorsDict["sampleName"] = "A device with that name already exists"
+        theName = valuesDict.get("deviceName","")
+        if not theName:
+            errorsDict["deviceName"] = "Required"
+        elif theName in indigo.devices:
+            errorsDict["deviceName"] = "A device with that name already exists"
         
         if len(errorsDict) > 0:
             return (False, valuesDict, errorsDict)
@@ -223,29 +305,8 @@ class Plugin(indigo.PluginBase):
                 protocol     = indigo.kProtocol.Plugin,
                 name         = theName,
                 description  = "",
-                deviceTypeId = "onlineSensor",
-                props        = defaultProps["onlineSensor"],
-                )
-            return (True, valuesDict)
-    
-    ########################################
-    def createSamplePublicIP(self, valuesDict="", typeId=""):
-        self.logger.debug("createSamplePublicIP: " + valuesDict.get("sampleName"))
-        errorsDict = indigo.Dict()
-        
-        theName = valuesDict.get("sampleName","Public IP Sample Device")
-        if theName in indigo.devices:
-            errorsDict["sampleName"] = "A device with that name already exists"
-        
-        if len(errorsDict) > 0:
-            return (False, valuesDict, errorsDict)
-        else:
-            indigo.device.create(
-                protocol     = indigo.kProtocol.Plugin,
-                name         = theName,
-                description  = "",
-                deviceTypeId = "publicIP",
-                props        = defaultProps["publicIP"],
+                deviceTypeId = typeId,
+                props        = defaultProps[typeId],
                 )
             return (True, valuesDict)
     
