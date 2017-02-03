@@ -169,6 +169,15 @@
                   <Option value="km">Kilometers</Option>
                 </List>
             </Field>
+            <Field id="onThreshold" type="textfield" defaultValue="0.0">
+                <Label>On threshold (Mbps):</Label>
+            </Field>
+			<Field id="thresholdLabel" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
+                <Label>Device will report ON if either upload or download speed exceeds this threshold.</Label>
+            </Field>
+            <Field id="spacer2" type="label">
+                <Label> </Label>
+            </Field>
             <Field id="updateFrequency" type="menu" defaultValue="360">
                 <Label>Update Frequency:</Label>
                 <List>

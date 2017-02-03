@@ -147,6 +147,15 @@ class Plugin(indigo.PluginBase):
             if not is_valid_hostname(valuesDict.get("domainName")):
                 errorsDict["domainName"] = "Not a valid domain"
             
+        # SPEEDTEST
+        elif typeId == "speedtest":
+            try:
+                valuesDict["threshold"] = float(valuesDict.get("onThreshold","0"))
+                if valuesDict["threshold"] < 0:
+                    raise ValueError("negative value")
+            except:
+                errorsDict["onThreshold"] = "Must be a positive real number (or zero)."
+            
         if len(errorsDict) > 0:
             return (False, valuesDict, errorsDict)
         else:
@@ -246,13 +255,14 @@ class Plugin(indigo.PluginBase):
                 self.logger.debug("  ...results...")
                 r = s.results
             
-                dnld  = r.download/1024./1024.
-                upld  = r.upload/1024./1024.
-                ping  = r.ping
-                dist  = r.server.get('d',0.)
+                dnld = r.download/1024./1024.
+                upld = r.upload/1024./1024.
+                ping = r.ping
+                dist = r.server.get('d',0.)
                 unit = dev.pluginProps['distanceUnit']
+                isOn = any(val > dev.pluginProps['threshold'] for val in [dnld,upld])
             
-                newStates.append({'key':'onOffState',         'value':(dnld+upld!=0.)       })
+                newStates.append({'key':'onOffState',         'value':isOn                          })
                 newStates.append({'key':'Mbps_download',      'value':dnld, 'decimalPlaces':2, 'uiValue':'%0.2f Mbps'%dnld })
                 newStates.append({'key':'Mbps_upload',        'value':upld, 'decimalPlaces':2, 'uiValue':'%0.2f Mbps'%upld })
                 newStates.append({'key':'ping_latency',       'value':ping, 'decimalPlaces':2, 'uiValue':'%0.2f ms'  %ping })
