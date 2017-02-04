@@ -1,25 +1,37 @@
 <?xml version="1.0"?>
 <MenuItems>
-	<MenuItem id="addSampleOnlineSensor">
-		<Name>Add Sample Online Sensor Device</Name>
-		<CallbackMethod>createSampleOnlineSensor</CallbackMethod>
+	<MenuItem id="onlineSensor">
+		<Name>Create Sample Online Sensor Device</Name>
+		<CallbackMethod>createSampleDevice</CallbackMethod>
 		<ConfigUI>
 		    <Field id="sampleLabel" type="label">
 		        <Label>Create a device that pings major DNS servers to indicate if Indigo is connected to he internet. You can customize the device after it is created.</Label>
 		    </Field>
-			<Field id="sampleName" type="textfield" defaultValue="Online Sensor">
+			<Field id="deviceName" type="textfield" defaultValue="Online Sensor">
 				<Label>Device Name:</Label>
 			</Field>
 		</ConfigUI>
 	</MenuItem>
-	<MenuItem id="addSamplePublicIP">
-		<Name>Add Sample Public IP Device</Name>
-		<CallbackMethod>createSamplePublicIP</CallbackMethod>
+	<MenuItem id="publicIP">
+		<Name>Create Sample Public IP Device</Name>
+		<CallbackMethod>createSampleDevice</CallbackMethod>
 		<ConfigUI>
 		    <Field id="sampleLabel" type="label">
 		        <Label>Create a device that checks Indigo's public IP address. You can customize the device after it is created.</Label>
 		    </Field>
-			<Field id="sampleName" type="textfield" defaultValue="Public IP">
+			<Field id="deviceName" type="textfield" defaultValue="Public IP">
+				<Label>Device Name:</Label>
+			</Field>
+		</ConfigUI>
+	</MenuItem>
+	<MenuItem id="speedtest">
+		<Name>Create Sample Speedtest Device</Name>
+		<CallbackMethod>createSampleDevice</CallbackMethod>
+		<ConfigUI>
+		    <Field id="sampleLabel" type="label">
+		        <Label>Create a device that checks connection speed with speedtest.net. You can customize the device after it is created.</Label>
+		    </Field>
+			<Field id="deviceName" type="textfield" defaultValue="Speedtest">
 				<Label>Device Name:</Label>
 			</Field>
 		</ConfigUI>

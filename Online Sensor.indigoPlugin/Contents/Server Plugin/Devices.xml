@@ -45,7 +45,7 @@
                   <Option value="10">10 Minutes</Option>
                   <Option value="15">15 Minutes</Option>
                   <Option value="30">30 Minutes</Option>
-                  <Option value="60">60 Minutes</Option>
+                  <Option value="60">1 Hour</Option>
                 </List>
             </Field>
 	        <Field id="sensorLogic" type="menu" defaultValue="ANY">
@@ -61,13 +61,11 @@
                 <ValueType>String</ValueType>
                 <TriggerLabel>Last Up</TriggerLabel>
                 <ControlPageLabel>Last Up</ControlPageLabel>
-                <readonly>YES</readonly>
             </State>
             <State id="lastDn">
                 <ValueType>String</ValueType>
                 <TriggerLabel>Last Down</TriggerLabel>
                 <ControlPageLabel>Last Down</ControlPageLabel>
-                <readonly>YES</readonly>
             </State>
 	    </States>
     </Device>
@@ -77,7 +75,7 @@
             <Field id="ipEchoService" type="textfield" defaultValue="http://ipecho.net/plain">
                 <Label>IP Echo Service (full URL):</Label>
             </Field>
-            <Field id="updateFrequency" type="menu" defaultValue="5">
+            <Field id="updateFrequency" type="menu" defaultValue="10">
                 <Label>Update Frequency:</Label>
                 <List>
                   <Option value="1">1 Minute</Option>
@@ -86,7 +84,11 @@
                   <Option value="10">10 Minutes</Option>
                   <Option value="15">15 Minutes</Option>
                   <Option value="30">30 Minutes</Option>
-                  <Option value="60">60 Minutes</Option>
+                  <Option value="60">1 Hour</Option>
+                  <Option value="180">3 Hours</Option>
+                  <Option value="360">6 Hours</Option>
+                  <Option value="720">12 Hours</Option>
+                  <Option value="1440">24 Hours</Option>
                 </List>
             </Field>
 	    </ConfigUI>
@@ -95,19 +97,16 @@
                 <ValueType>String</ValueType>
                 <TriggerLabel>IP Address</TriggerLabel>
                 <ControlPageLabel>IP Address</ControlPageLabel>
-                <readonly>YES</readonly>
             </State>
             <State id="ipAddressUi">
                 <ValueType>String</ValueType>
                 <TriggerLabel>IP Address UI</TriggerLabel>
                 <ControlPageLabel>IP Address UI</ControlPageLabel>
-                <readonly>YES</readonly>
             </State>
             <State id="lastChange">
                 <ValueType>String</ValueType>
                 <TriggerLabel>Last Success</TriggerLabel>
                 <ControlPageLabel>Last Success</ControlPageLabel>
-                <readonly>YES</readonly>
             </State>
         </States>
     </Device>
@@ -117,7 +116,7 @@
             <Field id="domainName" type="textfield">
                 <Label>Domain Name:</Label>
             </Field>
-            <Field id="updateFrequency" type="menu" defaultValue="5">
+            <Field id="updateFrequency" type="menu" defaultValue="10">
                 <Label>Update Frequency:</Label>
                 <List>
                   <Option value="1">1 Minute</Option>
@@ -126,7 +125,11 @@
                   <Option value="10">10 Minutes</Option>
                   <Option value="15">15 Minutes</Option>
                   <Option value="30">30 Minutes</Option>
-                  <Option value="60">60 Minutes</Option>
+                  <Option value="60">1 Hour</Option>
+                  <Option value="180">3 Hours</Option>
+                  <Option value="360">6 Hours</Option>
+                  <Option value="720">12 Hours</Option>
+                  <Option value="1440">24 Hours</Option>
                 </List>
             </Field>
 	    </ConfigUI>
@@ -135,19 +138,153 @@
                 <ValueType>String</ValueType>
                 <TriggerLabel>IP Address</TriggerLabel>
                 <ControlPageLabel>IP Address</ControlPageLabel>
-                <readonly>YES</readonly>
             </State>
             <State id="ipAddressUi">
                 <ValueType>String</ValueType>
                 <TriggerLabel>IP Address UI</TriggerLabel>
                 <ControlPageLabel>IP Address UI</ControlPageLabel>
-                <readonly>YES</readonly>
             </State>
             <State id="lastChange">
                 <ValueType>String</ValueType>
                 <TriggerLabel>Last Success</TriggerLabel>
                 <ControlPageLabel>Last Success</ControlPageLabel>
-                <readonly>YES</readonly>
+            </State>
+        </States>
+    </Device>
+    <Device type="sensor" id="speedtest">
+	    <Name>Speedtest</Name>
+	    <ConfigUI>
+            <Field id="testSelection" type="menu" defaultValue="BOTH">
+                <Label>Select test(s):</Label>
+                <List>
+                  <Option value="DOWN">Download</Option>
+                  <Option value="UP">Upload</Option>
+                  <Option value="BOTH">Both</Option>
+                </List>
+            </Field>
+            <Field id="threshold_str" type="textfield" defaultValue="10.0">
+                <Label>On threshold (Mbps):</Label>
+            </Field>
+			<Field id="thresholdLabel" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
+                <Label>Device will report ON if either upload or download speed exceeds this threshold.</Label>
+            </Field>
+            <Field id="distanceUnit" type="menu" defaultValue="mi">
+                <Label>Distance unit:</Label>
+                <List>
+                  <Option value="mi">Miles</Option>
+                  <Option value="km">Kilometers</Option>
+                </List>
+            </Field>
+			<Field id="unitLabel" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
+                <Label>Only affects label on control pages.</Label>
+            </Field>
+            <Field id="spacer2" type="label">
+                <Label> </Label>
+            </Field>
+            <Field id="updateFrequency" type="menu" defaultValue="360">
+                <Label>Update Frequency:</Label>
+                <List>
+                  <Option value="10">10 Minutes</Option>
+                  <Option value="15">15 Minutes</Option>
+                  <Option value="30">30 Minutes</Option>
+                  <Option value="60">1 Hour</Option>
+                  <Option value="180">3 Hours</Option>
+                  <Option value="360">6 Hours</Option>
+                  <Option value="720">12 Hours</Option>
+                  <Option value="1440">24 Hours</Option>
+                </List>
+            </Field>
+	    </ConfigUI>
+	    <States>
+            <State id="Mbps_download">
+                <ValueType>Number</ValueType>
+                <TriggerLabel>Download Speed (Mbps)</TriggerLabel>
+                <ControlPageLabel>Download Speed (Mbps)</ControlPageLabel>
+            </State>
+            <State id="Mbps_upload">
+                <ValueType>Number</ValueType>
+                <TriggerLabel>Upload Speed (Mbps)</TriggerLabel>
+                <ControlPageLabel>Upload Speed (Mbps)</ControlPageLabel>
+            </State>
+            <State id="ping_latency">
+                <ValueType>Number</ValueType>
+                <TriggerLabel>Ping Latency</TriggerLabel>
+                <ControlPageLabel>Ping Latency</ControlPageLabel>
+            </State>
+            <State id="raw_download">
+                <ValueType>Number</ValueType>
+                <TriggerLabel>Raw Download Speed</TriggerLabel>
+                <ControlPageLabel>Raw Download Speed</ControlPageLabel>
+            </State>
+            <State id="raw_upload">
+                <ValueType>Number</ValueType>
+                <TriggerLabel>Raw Upload Speed</TriggerLabel>
+                <ControlPageLabel>Raw Upload Speed</ControlPageLabel>
+            </State>
+            <State id="server_id">
+                <ValueType>Integer</ValueType>
+                <TriggerLabel>Server ID</TriggerLabel>
+                <ControlPageLabel>Server ID</ControlPageLabel>
+            </State>
+            <State id="server_latitude">
+                <ValueType>Number</ValueType>
+                <TriggerLabel>Server Latitude</TriggerLabel>
+                <ControlPageLabel>Server Latitude</ControlPageLabel>
+            </State>
+            <State id="server_longitude">
+                <ValueType>Number</ValueType>
+                <TriggerLabel>Server Longitude</TriggerLabel>
+                <ControlPageLabel>Server Longitude</ControlPageLabel>
+            </State>
+            <State id="server_distance">
+                <ValueType>Number</ValueType>
+                <TriggerLabel>Server Distance</TriggerLabel>
+                <ControlPageLabel>Server Distance</ControlPageLabel>
+            </State>
+            <State id="server_name">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Server Name</TriggerLabel>
+                <ControlPageLabel>Server Name</ControlPageLabel>
+            </State>
+            <State id="server_country">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Server Country</TriggerLabel>
+                <ControlPageLabel>Server Country</ControlPageLabel>
+            </State>
+            <State id="server_countrycode">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Server Country Code</TriggerLabel>
+                <ControlPageLabel>Server Country Code</ControlPageLabel>
+            </State>
+            <State id="server_url1">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Server URL 1</TriggerLabel>
+                <ControlPageLabel>Server URL 1</ControlPageLabel>
+            </State>
+            <State id="server_url2">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Server URL 2</TriggerLabel>
+                <ControlPageLabel>Server URL 2</ControlPageLabel>
+            </State>
+            <State id="server_host">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Server Host</TriggerLabel>
+                <ControlPageLabel>Server Host</ControlPageLabel>
+            </State>
+            <State id="server_sponsor">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Server Sponsor</TriggerLabel>
+                <ControlPageLabel>Server Sponsor</ControlPageLabel>
+            </State>
+            <State id="share_link">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Share Link</TriggerLabel>
+                <ControlPageLabel>Share Link</ControlPageLabel>
+            </State>
+            <State id="timestamp">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Timestamp</TriggerLabel>
+                <ControlPageLabel>Timestamp</ControlPageLabel>
             </State>
         </States>
     </Device>
