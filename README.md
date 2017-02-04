@@ -98,11 +98,11 @@ If the last attempt was successful.
 * **Select Test(s)**  
 Perform download test, upload test, or both.
 
-* **Distance Unit**  
-Speedtest.net reports the distance to the server.  Only affects how the state appears in control pages.
-
 * **On Threshold**  
 The minimum tested speed (upload or download) at which the sensor will report ON.
+
+* **Distance Unit**  
+Speedtest.net reports the distance to the server.  This only affects the unit label on control pages (i.e. no conversion takes place).
 
 * **Update Frequency**  
 Define how often the device perform a speedtest.

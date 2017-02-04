@@ -162,6 +162,12 @@
                   <Option value="BOTH">Both</Option>
                 </List>
             </Field>
+            <Field id="threshold_str" type="textfield" defaultValue="10.0">
+                <Label>On threshold (Mbps):</Label>
+            </Field>
+			<Field id="thresholdLabel" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
+                <Label>Device will report ON if either upload or download speed exceeds this threshold.</Label>
+            </Field>
             <Field id="distanceUnit" type="menu" defaultValue="mi">
                 <Label>Distance unit:</Label>
                 <List>
@@ -169,11 +175,8 @@
                   <Option value="km">Kilometers</Option>
                 </List>
             </Field>
-            <Field id="onThreshold" type="textfield" defaultValue="0.0">
-                <Label>On threshold (Mbps):</Label>
-            </Field>
-			<Field id="thresholdLabel" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
-                <Label>Device will report ON if either upload or download speed exceeds this threshold.</Label>
+			<Field id="unitLabel" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
+                <Label>Only affects label on control pages.</Label>
             </Field>
             <Field id="spacer2" type="label">
                 <Label> </Label>
