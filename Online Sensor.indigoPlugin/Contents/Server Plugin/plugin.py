@@ -96,9 +96,11 @@ class Plugin(indigo.PluginBase):
             while True:
                 loopTime = datetime.now()
                 for devId in self.deviceDict:
-                    dev = self.deviceDict[devId]['dev']
-                    if self.deviceDict[devId]['lastCheck'] + timedelta(minutes=int(dev.pluginProps['updateFrequency'])) < loopTime:
-                        self.updateDeviceStatus(dev)
+                    dev  = self.deviceDict[devId]['dev']
+                    freq = int(dev.pluginProps['updateFrequency'])
+                    if freq:
+                        if self.deviceDict[devId]['lastCheck'] + timedelta(minutes=freq) < loopTime:
+                            self.updateDeviceStatus(dev)
                 self.sleep((loopTime+timedelta(seconds=5)-datetime.now()).total_seconds())
         except self.StopThread:
             pass    # Optionally catch the StopThread exception and do any needed cleanup.

@@ -39,14 +39,21 @@
             <Field id="updateFrequency" type="menu" defaultValue="5">
                 <Label>Update Frequency:</Label>
                 <List>
-                  <Option value="1">1 Minute</Option>
-                  <Option value="2">2 Minutes</Option>
-                  <Option value="5">5 Minutes</Option>
-                  <Option value="10">10 Minutes</Option>
-                  <Option value="15">15 Minutes</Option>
-                  <Option value="30">30 Minutes</Option>
-                  <Option value="60">1 Hour</Option>
+                    <Option value="0">Disable</Option>
+                    <Option value="1">1 Minute</Option>
+                    <Option value="2">2 Minutes</Option>
+                    <Option value="5">5 Minutes</Option>
+                    <Option value="10">10 Minutes</Option>
+                    <Option value="15">15 Minutes</Option>
+                    <Option value="30">30 Minutes</Option>
+                    <Option value="60">1 Hour</Option>
                 </List>
+            </Field>
+            <Field id="disabledLabel" type="label" visibleBindingId="updateFrequency"  visibleBindingValue="0" alwaysUseInDialogHeightCalc="true" fontColor="darkgray" fontSize="small" alignWithControl="true">
+                <Label>Device will only update when requested.</Label>
+            </Field>
+            <Field id="spacer2" type="label">
+                <Label> </Label>
             </Field>
 	        <Field id="sensorLogic" type="menu" defaultValue="ANY">
                 <Label>Sensor Logic:</Label>
@@ -78,18 +85,22 @@
             <Field id="updateFrequency" type="menu" defaultValue="10">
                 <Label>Update Frequency:</Label>
                 <List>
-                  <Option value="1">1 Minute</Option>
-                  <Option value="2">2 Minutes</Option>
-                  <Option value="5">5 Minutes</Option>
-                  <Option value="10">10 Minutes</Option>
-                  <Option value="15">15 Minutes</Option>
-                  <Option value="30">30 Minutes</Option>
-                  <Option value="60">1 Hour</Option>
-                  <Option value="180">3 Hours</Option>
-                  <Option value="360">6 Hours</Option>
-                  <Option value="720">12 Hours</Option>
-                  <Option value="1440">24 Hours</Option>
+                    <Option value="0">Disable</Option>
+                    <Option value="1">1 Minute</Option>
+                    <Option value="2">2 Minutes</Option>
+                    <Option value="5">5 Minutes</Option>
+                    <Option value="10">10 Minutes</Option>
+                    <Option value="15">15 Minutes</Option>
+                    <Option value="30">30 Minutes</Option>
+                    <Option value="60">1 Hour</Option>
+                    <Option value="180">3 Hours</Option>
+                    <Option value="360">6 Hours</Option>
+                    <Option value="720">12 Hours</Option>
+                    <Option value="1440">24 Hours</Option>
                 </List>
+            </Field>
+            <Field id="disabledLabel" type="label" visibleBindingId="updateFrequency"  visibleBindingValue="0" alwaysUseInDialogHeightCalc="true" fontColor="darkgray" fontSize="small" alignWithControl="true">
+                <Label>Device will only update when requested.</Label>
             </Field>
 	    </ConfigUI>
 	    <States>
@@ -119,18 +130,22 @@
             <Field id="updateFrequency" type="menu" defaultValue="10">
                 <Label>Update Frequency:</Label>
                 <List>
-                  <Option value="1">1 Minute</Option>
-                  <Option value="2">2 Minutes</Option>
-                  <Option value="5">5 Minutes</Option>
-                  <Option value="10">10 Minutes</Option>
-                  <Option value="15">15 Minutes</Option>
-                  <Option value="30">30 Minutes</Option>
-                  <Option value="60">1 Hour</Option>
-                  <Option value="180">3 Hours</Option>
-                  <Option value="360">6 Hours</Option>
-                  <Option value="720">12 Hours</Option>
-                  <Option value="1440">24 Hours</Option>
+                    <Option value="0">Disable</Option>
+                    <Option value="1">1 Minute</Option>
+                    <Option value="2">2 Minutes</Option>
+                    <Option value="5">5 Minutes</Option>
+                    <Option value="10">10 Minutes</Option>
+                    <Option value="15">15 Minutes</Option>
+                    <Option value="30">30 Minutes</Option>
+                    <Option value="60">1 Hour</Option>
+                    <Option value="180">3 Hours</Option>
+                    <Option value="360">6 Hours</Option>
+                    <Option value="720">12 Hours</Option>
+                    <Option value="1440">24 Hours</Option>
                 </List>
+            </Field>
+            <Field id="disabledLabel" type="label" visibleBindingId="updateFrequency"  visibleBindingValue="0" alwaysUseInDialogHeightCalc="true" fontColor="darkgray" fontSize="small" alignWithControl="true">
+                <Label>Device will only update when requested.</Label>
             </Field>
 	    </ConfigUI>
 	    <States>
@@ -184,15 +199,19 @@
             <Field id="updateFrequency" type="menu" defaultValue="360">
                 <Label>Update Frequency:</Label>
                 <List>
-                  <Option value="10">10 Minutes</Option>
-                  <Option value="15">15 Minutes</Option>
-                  <Option value="30">30 Minutes</Option>
-                  <Option value="60">1 Hour</Option>
-                  <Option value="180">3 Hours</Option>
-                  <Option value="360">6 Hours</Option>
-                  <Option value="720">12 Hours</Option>
-                  <Option value="1440">24 Hours</Option>
+                    <Option value="0">Disable</Option>
+                    <Option value="10">10 Minutes</Option>
+                    <Option value="15">15 Minutes</Option>
+                    <Option value="30">30 Minutes</Option>
+                    <Option value="60">1 Hour</Option>
+                    <Option value="180">3 Hours</Option>
+                    <Option value="360">6 Hours</Option>
+                    <Option value="720">12 Hours</Option>
+                    <Option value="1440">24 Hours</Option>
                 </List>
+            </Field>
+            <Field id="disabledLabel" type="label" visibleBindingId="updateFrequency"  visibleBindingValue="0" alwaysUseInDialogHeightCalc="true" fontColor="darkgray" fontSize="small" alignWithControl="true">
+                <Label>Device will only update when requested.</Label>
             </Field>
 	    </ConfigUI>
 	    <States>
