@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-####################
+###############################################################################
 # http://www.indigodomo.com
 
 import indigo
@@ -16,9 +16,6 @@ try:
     from shlex import quote as cmd_quote
 except ImportError:
     from pipes import quote as cmd_quote
-
-# Note the "indigo" module is automatically imported and made available inside
-# our global name space by the host process.
 
 ###############################################################################
 # these are used to create sample devices, 
@@ -59,16 +56,16 @@ serverFields = ['checkServer1','checkServer2','checkServer3','checkServer4',
 
 ################################################################################
 class Plugin(indigo.PluginBase):
-    ########################################
+    #-------------------------------------------------------------------------------
     def __init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs):
         indigo.PluginBase.__init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs)
     
     def __del__(self):
         indigo.PluginBase.__del__(self)
 
-    ########################################
+    #-------------------------------------------------------------------------------
     # Start, Stop and Config changes
-    ########################################
+    #-------------------------------------------------------------------------------
     def startup(self):
         self.debug = self.pluginPrefs.get('showDebugInfo',False)
         self.logger.debug("startup")
@@ -77,12 +74,12 @@ class Plugin(indigo.PluginBase):
         self.speedtest_lock = threading.Lock()
         self.deviceDict = dict()
 
-    ########################################
+    #-------------------------------------------------------------------------------
     def shutdown(self):
         self.logger.debug("shutdown")
         self.pluginPrefs['showDebugInfo'] = self.debug
 
-    ########################################
+    #-------------------------------------------------------------------------------
     def closedPrefsConfigUi(self, valuesDict, userCancelled):
         self.logger.debug("closedPrefsConfigUi")
         if not userCancelled:
@@ -90,7 +87,7 @@ class Plugin(indigo.PluginBase):
             if self.debug:
                 self.logger.debug("Debug logging enabled")
     
-    ########################################
+    #-------------------------------------------------------------------------------
     def runConcurrentThread(self):
         try:
             while True:
@@ -105,9 +102,9 @@ class Plugin(indigo.PluginBase):
         except self.StopThread:
             pass    # Optionally catch the StopThread exception and do any needed cleanup.
     
-    ########################################
+    #-------------------------------------------------------------------------------
     # Device Methods
-    ########################################
+    #-------------------------------------------------------------------------------
     def deviceStartComm(self, dev):
         self.logger.debug("deviceStartComm: "+dev.name)
         if dev.version != self.pluginVersion:
@@ -116,13 +113,13 @@ class Plugin(indigo.PluginBase):
         if dev.configured:
             self.deviceDict[dev.id] = {'dev':dev, 'lastCheck':dev.lastChanged}
     
-    ########################################
+    #-------------------------------------------------------------------------------
     def deviceStopComm(self, dev):
         self.logger.debug("deviceStopComm: "+dev.name)
         if dev.id in self.deviceDict:
             del self.deviceDict[dev.id]
             
-    ########################################
+    #-------------------------------------------------------------------------------
     def didDeviceCommPropertyChange(self, origDev, newDev):
         if newDev.pluginId == self.pluginId:
             if newDev.id in self.deviceDict:
@@ -131,7 +128,7 @@ class Plugin(indigo.PluginBase):
                 return False
         return True
     
-    ########################################
+    #-------------------------------------------------------------------------------
     def validateDeviceConfigUi(self, valuesDict, typeId, devId, runtime=False):
         self.logger.debug("validateDeviceConfigUi: " + typeId)
         errorsDict = indigo.Dict()
@@ -167,7 +164,7 @@ class Plugin(indigo.PluginBase):
         else:
             return (True, valuesDict)
     
-    ########################################
+    #-------------------------------------------------------------------------------
     def updateDeviceVersion(self, dev):
         self.logger.debug("updateDeviceVersion: " + dev.name)
         theProps = dev.pluginProps
@@ -185,7 +182,7 @@ class Plugin(indigo.PluginBase):
         theProps['version'] = self.pluginVersion
         dev.replacePluginPropsOnServer(theProps)
     
-    ########################################
+    #-------------------------------------------------------------------------------
     def updateDeviceStatus(self,dev):
         self.logger.debug("updateDeviceStatus: " + dev.name)
         statusUpdateTime = datetime.now()
@@ -242,7 +239,7 @@ class Plugin(indigo.PluginBase):
         self.deviceDict[dev.id]['lastCheck'] = datetime.now()
         self.logger.debug("updateDeviceStatus: %s seconds" % (datetime.now()-statusUpdateTime).total_seconds() )
     
-    ########################################
+    #-------------------------------------------------------------------------------
     def performSpeedtest(self, dev):
         if self.speedtest_lock.acquire(False):
             self.logger.debug("performSpeedtest: %s" % dev.name)
@@ -303,9 +300,9 @@ class Plugin(indigo.PluginBase):
                 self.logger.debug("performSpeedtest: %s seconds" % (datetime.now()-speedtestStartTime).total_seconds() )
                 self.speedtest_lock.release()
     
-    ########################################
+    #-------------------------------------------------------------------------------
     # Menu Methods
-    ########################################
+    #-------------------------------------------------------------------------------
     def createSampleDevice(self, valuesDict, typeId):
         self.logger.debug("createSampleDevice: " + valuesDict.get('deviceName'))
         errorsDict = indigo.Dict()
@@ -328,9 +325,9 @@ class Plugin(indigo.PluginBase):
                 )
             return (True, valuesDict)
     
-    ########################################
+    #-------------------------------------------------------------------------------
     # Action Methods
-    ########################################
+    #-------------------------------------------------------------------------------
     def actionControlSensor(self, action, dev):
         self.logger.debug("actionControlSensor: "+dev.name)
         # STATUS REQUEST
@@ -341,9 +338,9 @@ class Plugin(indigo.PluginBase):
         else:
             self.logger.debug('"%s" %s request ignored' % (dev.name, unicode(action.sensorAction)))
     
-    ########################################
+    #-------------------------------------------------------------------------------
     # Menu Methods
-    ########################################
+    #-------------------------------------------------------------------------------
     def toggleDebug(self):
         if self.debug:
             self.logger.debug("Debug logging disabled")
@@ -352,9 +349,9 @@ class Plugin(indigo.PluginBase):
             self.debug = True
             self.logger.debug("Debug logging enabled")
         
-########################################
+###############################################################################
 # Utilities
-########################################
+###############################################################################
 def do_ping(server):
     cmd = "/sbin/ping -c1 -t1 %s" % cmd_quote(server)
     return (do_shell_script(cmd)[0])
@@ -374,7 +371,7 @@ def do_shell_script (cmd):
     out, err = p.communicate()
     return (not bool(p.returncode)), out.rstrip()
 
-########################################
+#-------------------------------------------------------------------------------
 # http://stackoverflow.com/questions/2532053/validate-a-hostname-string
 def is_valid_hostname(hostname):
     if hostname[-1] == ".":
@@ -389,6 +386,7 @@ def is_valid_hostname(hostname):
     allowed = re.compile(r"(?!-)[a-z0-9-]{1,63}(?<!-)$", re.IGNORECASE)
     return all(allowed.match(label) for label in labels)
 
+#-------------------------------------------------------------------------------
 # http://stackoverflow.com/questions/319279/how-to-validate-ip-address-in-python
 def is_valid_ipv4_address(address):
     try:
@@ -409,6 +407,7 @@ def is_valid_ipv6_address(address):
         return False
     return True
 
+#-------------------------------------------------------------------------------
 # http://stackoverflow.com/questions/7160737/python-how-to-validate-a-url-in-python-malformed-or-not#7160819
 def is_valid_url(url, qualifying=None):
     min_attributes = ('scheme', 'netloc')
