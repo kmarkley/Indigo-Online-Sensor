@@ -240,6 +240,16 @@
                 <TriggerLabel>Raw Upload Speed</TriggerLabel>
                 <ControlPageLabel>Raw Upload Speed</ControlPageLabel>
             </State>
+            <State id="bytes_received">
+                <ValueType>Number</ValueType>
+                <TriggerLabel>Bytes Received</TriggerLabel>
+                <ControlPageLabel>Bytes Received</ControlPageLabel>
+            </State>
+            <State id="bytes_sent">
+                <ValueType>Number</ValueType>
+                <TriggerLabel>Bytes Sent</TriggerLabel>
+                <ControlPageLabel>Bytes Sent</ControlPageLabel>
+            </State>
             <State id="server_id">
                 <ValueType>Integer</ValueType>
                 <TriggerLabel>Server ID</TriggerLabel>

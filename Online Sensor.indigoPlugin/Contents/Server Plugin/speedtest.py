@@ -36,7 +36,7 @@ except ImportError:
     gzip = None
     GZIP_BASE = object
 
-__version__ = '1.0.2'
+__version__ = '1.0.6'
 
 
 class FakeShutdownEvent(object):
@@ -135,21 +135,60 @@ try:
     BytesIO = None
 except ImportError:
     try:
-        from io import StringIO, BytesIO
-    except ImportError:
         from StringIO import StringIO
         BytesIO = None
+    except ImportError:
+        from io import StringIO, BytesIO
 
 try:
-    import builtins
+    import __builtin__
 except ImportError:
+    import builtins
+    from io import TextIOWrapper, FileIO
+
+    class _Py3Utf8Stdout(TextIOWrapper):
+        """UTF-8 encoded wrapper around stdout for py3, to override
+        ASCII stdout
+        """
+        def __init__(self, **kwargs):
+            buf = FileIO(sys.stdout.fileno(), 'w')
+            super(_Py3Utf8Stdout, self).__init__(
+                buf,
+                encoding='utf8',
+                errors='strict'
+            )
+
+        def write(self, s):
+            super(_Py3Utf8Stdout, self).write(s)
+            self.flush()
+
+    _py3_print = getattr(builtins, 'print')
+    _py3_utf8_stdout = _Py3Utf8Stdout()
+
+    def to_utf8(v):
+        """No-op encode to utf-8 for py3"""
+        return v
+
+    def print_(*args, **kwargs):
+        """Wrapper function for py3 to print, with a utf-8 encoded stdout"""
+        kwargs['file'] = _py3_utf8_stdout
+        _py3_print(*args, **kwargs)
+else:
+    del __builtin__
+
+    def to_utf8(v):
+        """Encode value to utf-8 if possible for py2"""
+        try:
+            return v.encode('utf8', 'strict')
+        except AttributeError:
+            return v
+
     def print_(*args, **kwargs):
         """The new-style print function for Python 2.4 and 2.5.
 
         Taken from https://pypi.python.org/pypi/six/
 
-        Modified to set encoding to UTF-8 if not set when stdout may not be
-        a tty such as when piping to head
+        Modified to set encoding to UTF-8 always
         """
         fp = kwargs.pop("file", sys.stdout)
         if fp is None:
@@ -159,7 +198,7 @@ except ImportError:
             if not isinstance(data, basestring):
                 data = str(data)
             # If the file has an encoding, encode unicode with it.
-            encoding = fp.encoding or 'UTF-8'  # Diverges for notty
+            encoding = 'utf8'  # Always trust UTF-8 for output
             if (isinstance(fp, file) and
                     isinstance(data, unicode) and
                     encoding is not None):
@@ -203,9 +242,7 @@ except ImportError:
                 write(sep)
             write(arg)
         write(end)
-else:
-    print_ = getattr(builtins, 'print')
-    del builtins
+
 
 # Exception "constants" to support Python 2 through Python 3
 try:
@@ -505,7 +542,7 @@ class HTTPUploaderData(object):
 
         self.total = [0]
 
-    def _create_data(self):
+    def pre_allocate(self):
         chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
         multiplier = int(round(int(self.length) / 36.0))
         IO = BytesIO or StringIO
@@ -518,7 +555,7 @@ class HTTPUploaderData(object):
     @property
     def data(self):
         if not self._data:
-            self._create_data()
+            self.pre_allocate()
         return self._data
 
     def read(self, n=10240):
@@ -528,7 +565,7 @@ class HTTPUploaderData(object):
             self.total.append(len(chunk))
             return chunk
         else:
-            raise SpeedtestUploadTimeout
+            raise SpeedtestUploadTimeout()
 
     def __len__(self):
         return self.length
@@ -591,7 +628,7 @@ class SpeedtestResults(object):
         else:
             self.server = server
         self._share = None
-        self.timestamp = datetime.datetime.utcnow().isoformat()
+        self.timestamp = '%sZ' % datetime.datetime.utcnow().isoformat()
         self.bytes_received = 0
         self.bytes_sent = 0
 
@@ -667,7 +704,10 @@ class SpeedtestResults(object):
             'upload': self.upload,
             'ping': self.ping,
             'server': self.server,
-            'timestamp': self.timestamp
+            'timestamp': self.timestamp,
+            'bytes_sent': self.bytes_sent,
+            'bytes_received': self.bytes_received,
+            'share': self._share,
         }
 
     def csv(self, delimiter=','):
@@ -676,10 +716,11 @@ class SpeedtestResults(object):
         data = self.dict()
         out = StringIO()
         writer = csv.writer(out, delimiter=delimiter, lineterminator='')
-        writer.writerow([data['server']['id'], data['server']['sponsor'],
-                         data['server']['name'], data['timestamp'],
-                         data['server']['d'], data['ping'], data['download'],
-                         data['upload']])
+        row = [data['server']['id'], data['server']['sponsor'],
+               data['server']['name'], data['timestamp'],
+               data['server']['d'], data['ping'], data['download'],
+               data['upload']]
+        writer.writerow([to_utf8(v) for v in row])
         return out.getvalue()
 
     def json(self, pretty=False):
@@ -767,8 +808,12 @@ class Speedtest(object):
                          3000, 3500, 4000]
         }
 
+        size_count = len(sizes['upload'])
+
+        upload_count = int(math.ceil(upload_max / size_count))
+
         counts = {
-            'upload': int(upload_max * 2 / len(sizes['upload'])),
+            'upload': upload_count,
             'download': int(download['threadsperurl'])
         }
 
@@ -789,10 +834,12 @@ class Speedtest(object):
             'counts': counts,
             'threads': threads,
             'length': length,
-            'upload_max': upload_max
+            'upload_max': upload_count * size_count
         })
 
         self.lat_lon = (float(client['lat']), float(client['lon']))
+
+        printer(self.config, debug=True)
 
         return self.config
 
@@ -833,7 +880,7 @@ class Speedtest(object):
                 uh, e = catch_request(request)
                 if e:
                     errors.append('%s' % e)
-                    raise ServersRetrievalError
+                    raise ServersRetrievalError()
 
                 stream = get_response_stream(uh)
 
@@ -847,7 +894,7 @@ class Speedtest(object):
                 uh.close()
 
                 if int(uh.code) != 200:
-                    raise ServersRetrievalError
+                    raise ServersRetrievalError()
 
                 printer(''.encode().join(serversxml), debug=True)
 
@@ -859,7 +906,7 @@ class Speedtest(object):
                         root = DOM.parseString(''.join(serversxml))
                         elements = root.getElementsByTagName('server')
                 except (SyntaxError, xml.parsers.expat.ExpatError):
-                    raise ServersRetrievalError
+                    raise ServersRetrievalError()
 
                 for server in elements:
                     try:
@@ -895,7 +942,7 @@ class Speedtest(object):
                 continue
 
         if servers and not self.servers:
-            raise NoMatchedServers
+            raise NoMatchedServers()
 
         return self.servers
 
@@ -1083,7 +1130,7 @@ class Speedtest(object):
             self.config['threads']['upload'] = 8
         return self.results.download
 
-    def upload(self, callback=do_nothing):
+    def upload(self, callback=do_nothing, pre_allocate=True):
         """Test upload speed against speedtest.net"""
 
         sizes = []
@@ -1099,13 +1146,12 @@ class Speedtest(object):
         for i, size in enumerate(sizes):
             # We set ``0`` for ``start`` and handle setting the actual
             # ``start`` in ``HTTPUploader`` to get better measurements
+            data = HTTPUploaderData(size, 0, self.config['length']['upload'])
+            if pre_allocate:
+                data.pre_allocate()
             requests.append(
                 (
-                    build_request(
-                        self.best['url'],
-                        HTTPUploaderData(size, 0,
-                                         self.config['length']['upload'])
-                    ),
+                    build_request(self.best['url'], data),
                     size
                 )
             )
@@ -1190,6 +1236,12 @@ def parse_args():
         parser.add_argument = parser.add_option
     except AttributeError:
         pass
+    parser.add_argument('--no-download', dest='download', default=True,
+                        action='store_const', const=False,
+                        help='Do not perform download test')
+    parser.add_argument('--no-upload', dest='upload', default=True,
+                        action='store_const', const=False,
+                        help='Do not perform upload test')
     parser.add_argument('--bytes', dest='units', action='store_const',
                         const=('byte', 8), default=('bit', 1),
                         help='Display values in bytes instead of bits. Does '
@@ -1197,7 +1249,7 @@ def parse_args():
                              'output from --json or --csv')
     parser.add_argument('--share', action='store_true',
                         help='Generate and provide a URL to the speedtest.net '
-                             'share results image')
+                             'share results image, not displayed with --csv')
     parser.add_argument('--simple', action='store_true', default=False,
                         help='Suppress verbose output, only show basic '
                              'information')
@@ -1226,6 +1278,13 @@ def parse_args():
     parser.add_argument('--secure', action='store_true',
                         help='Use HTTPS instead of HTTP when communicating '
                              'with speedtest.net operated servers')
+    parser.add_argument('--no-pre-allocate', dest='pre_allocate',
+                        action='store_const', default=True, const=False,
+                        help='Do not pre allocate upload data. Pre allocation '
+                             'is enabled by default to improve upload '
+                             'performance. To support systems with '
+                             'insufficient memory, use this option to avoid a '
+                             'MemoryError')
     parser.add_argument('--version', action='store_true',
                         help='Show the version number and exit')
     parser.add_argument('--debug', action='store_true',
@@ -1286,11 +1345,15 @@ def shell():
     if args.version:
         version()
 
+    if not args.download and not args.upload:
+        raise SpeedtestCLIError('Cannot supply both --no-download and '
+                                '--no-upload')
+
     if args.csv_header:
         csv_header()
 
     if len(args.csv_delimiter) != 1:
-        raise SystemExit('--csv-delimiter must be a single character')
+        raise SpeedtestCLIError('--csv-delimiter must be a single character')
 
     validate_optional_args(args)
 
@@ -1317,6 +1380,11 @@ def shell():
         quiet = True
     else:
         quiet = False
+
+    if args.csv or args.json:
+        machine_format = True
+    else:
+        machine_format = False
 
     # Don't set a callback if we are running quietly
     if quiet or debug:
@@ -1381,21 +1449,27 @@ def shell():
     printer('Hosted by %(sponsor)s (%(name)s) [%(d)0.2f km]: '
             '%(latency)s ms' % results.server, quiet)
 
-    printer('Testing download speed', quiet,
-            end=('', '\n')[bool(debug)])
-    speedtest.download(callback=callback)
-    printer('Download: %0.2f M%s/s' %
-            ((results.download / 1000.0 / 1000.0) / args.units[1],
-             args.units[0]),
-            quiet)
+    if args.download:
+        printer('Testing download speed', quiet,
+                end=('', '\n')[bool(debug)])
+        speedtest.download(callback=callback)
+        printer('Download: %0.2f M%s/s' %
+                ((results.download / 1000.0 / 1000.0) / args.units[1],
+                 args.units[0]),
+                quiet)
+    else:
+        printer('Skipping download test')
 
-    printer('Testing upload speed', quiet,
-            end=('', '\n')[bool(debug)])
-    speedtest.upload(callback=callback)
-    printer('Upload: %0.2f M%s/s' %
-            ((results.upload / 1000.0 / 1000.0) / args.units[1],
-             args.units[0]),
-            quiet)
+    if args.upload:
+        printer('Testing upload speed', quiet,
+                end=('', '\n')[bool(debug)])
+        speedtest.upload(callback=callback, pre_allocate=args.pre_allocate)
+        printer('Upload: %0.2f M%s/s' %
+                ((results.upload / 1000.0 / 1000.0) / args.units[1],
+                 args.units[0]),
+                quiet)
+    else:
+        printer('Skipping upload test')
 
     if args.simple:
         print_('Ping: %s ms\nDownload: %0.2f M%s/s\nUpload: %0.2f M%s/s' %
@@ -1407,10 +1481,12 @@ def shell():
     elif args.csv:
         print_(results.csv(delimiter=args.csv_delimiter))
     elif args.json:
+        if args.share:
+            results.share()
         print_(results.json())
 
-    if args.share:
-        printer('Share results: %s' % results.share(), quiet)
+    if args.share and not machine_format:
+        printer('Share results: %s' % results.share())
 
 
 def main():
@@ -1426,5 +1502,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-# vim:ts=4:sw=4:expandtab

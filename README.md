@@ -163,6 +163,12 @@ URL to a sharable image of the last test results on speedtest.net.
 * **Timestamp**  
 Timestamp of the last test, exactly as provide by speedtest.net.
 
+* **Bytes Received**  
+Bytes received in last download test.
+
+* **Bytes Sent**  
+Bytes sent in last upload test.
+
 * **onOffState**  
 If the last attempt was successful.
 
