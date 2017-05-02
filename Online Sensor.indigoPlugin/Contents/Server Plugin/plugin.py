@@ -243,19 +243,13 @@ class Plugin(indigo.PluginBase):
         def __init__(self, device, plugin):
             self.plugin     = plugin
             self.logger     = plugin.logger
-            self.id         = device.id
-            self.refresh(device)
+            self.logger.debug("__init__: {}".format(device.name))
 
-            self.freq       = zint(self.props['updateFrequency'])
-
-        #-------------------------------------------------------------------------------
-        def refresh(self, device=None):
-            if not device:
-                device      = indigo.devices[self.id]
             self.device     = device
+            self.id         = device.id
             self.name       = device.name
             self.props      = device.pluginProps
-            self.states     = device.states
+            self.freq       = zint(self.props['updateFrequency'])
             self.lastCheck  = device.lastChanged
 
         #-------------------------------------------------------------------------------
@@ -281,6 +275,7 @@ class Plugin(indigo.PluginBase):
 
         #-------------------------------------------------------------------------------
         def updateState(self):
+            self.logger.debug("updateState: {}".format(self.name))
             newStates = []
             servers = filter(None, (self.props.get(key) for key in serverFields))
             if self.logic == "ANY":
@@ -293,7 +288,7 @@ class Plugin(indigo.PluginBase):
                 newStates.append({'key':['lastDn','lastUp'][online],'value':unicode(datetime.now())})
             newStates.append({'key':'onOffState','value':online})
             self.device.updateStatesOnServer(newStates)
-            self.refresh()
+            self.lastCheck  = datetime.now()
 
     ###############################################################################
     class IpDevice(OnlineSensor):
@@ -309,13 +304,13 @@ class Plugin(indigo.PluginBase):
             if online != self.device.onState:
                 self.logger.info('"{}" {}'.format(self.name, ['off','on'][online]))
                 newStates.append({'key':'ipAddressUi','value':["not available",ipAddress][online]})
-            if online and (ipAddress != self.states['ipAddress']):
+            if online and (ipAddress != self.device.states['ipAddress']):
                 self.logger.info('"{}" new IP Address: {}'.format(self.name, ipAddress))
                 newStates.append({'key':'ipAddress','value':ipAddress})
                 newStates.append({'key':'lastChange','value':unicode(datetime.now())})
             newStates.append({'key':'onOffState','value':online})
             self.device.updateStatesOnServer(newStates)
-            self.refresh()
+            self.lastCheck  = datetime.now()
 
     ###############################################################################
     class PublicIpDevice(IpDevice):
@@ -326,6 +321,7 @@ class Plugin(indigo.PluginBase):
 
         #-------------------------------------------------------------------------------
         def updateState(self):
+            self.logger.debug("updateState: {}".format(self.name))
             ipAddress = get_host_IP_address(self.props['ipEchoService'])
             self.ipUpdate(ipAddress)
 
@@ -338,6 +334,7 @@ class Plugin(indigo.PluginBase):
 
         #-------------------------------------------------------------------------------
         def updateState(self):
+            self.logger.debug("updateState: {}".format(self.name))
             ipAddress = lookup_IP_address(self.props['domainName'])
             self.ipUpdate(ipAddress)
 
@@ -351,6 +348,7 @@ class Plugin(indigo.PluginBase):
 
         #-------------------------------------------------------------------------------
         def updateState(self):
+            self.logger.debug("updateState: {}".format(self.name))
             try:
                 speedtest_thread = threading.Thread(target=self.performSpeedtest)
                 speedtest_thread.setDaemon(True)
@@ -416,8 +414,8 @@ class Plugin(indigo.PluginBase):
 
                 finally:
                     self.device.updateStatesOnServer(newStates)
+                    self.lastCheck  = datetime.now()
                     self.logger.debug("performSpeedtest: {} seconds".format( (datetime.now()-speedtestStartTime).total_seconds() ) )
-                    self.refresh()
                     self.speedtest_lock.release()
 
 ###############################################################################
@@ -444,10 +442,8 @@ def do_shell_script (cmd):
     return (not bool(p.returncode)), out.rstrip()
 
 def zint(value):
-    try:
-        return int(value)
-    except:
-        return 0
+    try: return int(value)
+    except: return 0
 
 #-------------------------------------------------------------------------------
 # http://stackoverflow.com/questions/2532053/validate-a-hostname-string

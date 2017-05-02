@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <Devices>
-	<Device type="sensor" id="onlineSensor">
-	    <Name>Online Sensor</Name>
-	    <ConfigUI>
-	        <Field id="sensorLabel1" type="label">
+    <Device type="sensor" id="onlineSensor">
+        <Name>Online Sensor</Name>
+        <ConfigUI>
+            <Field id="sensorLabel1" type="label">
                 <Label>Configure up to eight servers to test for connectivity:</Label>
             </Field>
             <Field id="checkServer1" type="textfield">
@@ -30,7 +30,7 @@
             <Field id="checkServer8" type="textfield">
                 <Label>Server 8:</Label>
             </Field>
-			<Field id="sensorLabel2" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
+            <Field id="sensorLabel2" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
                 <Label>Servers may be IP addresses or domain names.</Label>
             </Field>
             <Field id="spacer1" type="label">
@@ -55,15 +55,15 @@
             <Field id="spacer2" type="label">
                 <Label> </Label>
             </Field>
-	        <Field id="sensorLogic" type="menu" defaultValue="ANY">
+            <Field id="sensorLogic" type="menu" defaultValue="ANY">
                 <Label>Sensor Logic:</Label>
                 <List>
                     <Option value="ANY">ANY</Option>
                     <Option value="ALL">ALL</Option>
                 </List>
             </Field>
-	    </ConfigUI>
-	    <States>
+        </ConfigUI>
+        <States>
             <State id="lastUp">
                 <ValueType>String</ValueType>
                 <TriggerLabel>Last Up</TriggerLabel>
@@ -74,11 +74,11 @@
                 <TriggerLabel>Last Down</TriggerLabel>
                 <ControlPageLabel>Last Down</ControlPageLabel>
             </State>
-	    </States>
+        </States>
     </Device>
     <Device type="sensor" id="publicIP">
-	    <Name>Public IP Address</Name>
-	    <ConfigUI>
+        <Name>Public IP Address</Name>
+        <ConfigUI>
             <Field id="ipEchoService" type="textfield" defaultValue="http://ipecho.net/plain">
                 <Label>IP Echo Service (full URL):</Label>
             </Field>
@@ -102,8 +102,8 @@
             <Field id="disabledLabel" type="label" visibleBindingId="updateFrequency"  visibleBindingValue="0" alwaysUseInDialogHeightCalc="true" fontColor="darkgray" fontSize="small" alignWithControl="true">
                 <Label>Device will only update when requested.</Label>
             </Field>
-	    </ConfigUI>
-	    <States>
+        </ConfigUI>
+        <States>
             <State id="ipAddress">
                 <ValueType>String</ValueType>
                 <TriggerLabel>IP Address</TriggerLabel>
@@ -122,8 +122,8 @@
         </States>
     </Device>
     <Device type="sensor" id="lookupIP">
-	    <Name>Lookup IP Address</Name>
-	    <ConfigUI>
+        <Name>Lookup IP Address</Name>
+        <ConfigUI>
             <Field id="domainName" type="textfield">
                 <Label>Domain Name:</Label>
             </Field>
@@ -147,8 +147,8 @@
             <Field id="disabledLabel" type="label" visibleBindingId="updateFrequency"  visibleBindingValue="0" alwaysUseInDialogHeightCalc="true" fontColor="darkgray" fontSize="small" alignWithControl="true">
                 <Label>Device will only update when requested.</Label>
             </Field>
-	    </ConfigUI>
-	    <States>
+        </ConfigUI>
+        <States>
             <State id="ipAddress">
                 <ValueType>String</ValueType>
                 <TriggerLabel>IP Address</TriggerLabel>
@@ -167,30 +167,30 @@
         </States>
     </Device>
     <Device type="sensor" id="speedtest">
-	    <Name>Speedtest</Name>
-	    <ConfigUI>
+        <Name>Speedtest</Name>
+        <ConfigUI>
             <Field id="testSelection" type="menu" defaultValue="BOTH">
                 <Label>Select test(s):</Label>
                 <List>
-                  <Option value="DOWN">Download</Option>
-                  <Option value="UP">Upload</Option>
-                  <Option value="BOTH">Both</Option>
+                    <Option value="DOWN">Download</Option>
+                    <Option value="UP">Upload</Option>
+                    <Option value="BOTH">Both</Option>
                 </List>
             </Field>
             <Field id="threshold_str" type="textfield" defaultValue="10.0">
                 <Label>On threshold (Mbps):</Label>
             </Field>
-			<Field id="thresholdLabel" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
+            <Field id="thresholdLabel" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
                 <Label>Device will report ON if either upload or download speed exceeds this threshold.</Label>
             </Field>
             <Field id="distanceUnit" type="menu" defaultValue="mi">
                 <Label>Distance unit:</Label>
                 <List>
-                  <Option value="mi">Miles</Option>
-                  <Option value="km">Kilometers</Option>
+                    <Option value="mi">Miles</Option>
+                    <Option value="km">Kilometers</Option>
                 </List>
             </Field>
-			<Field id="unitLabel" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
+            <Field id="unitLabel" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
                 <Label>Only affects label on control pages.</Label>
             </Field>
             <Field id="spacer2" type="label">
@@ -213,8 +213,8 @@
             <Field id="disabledLabel" type="label" visibleBindingId="updateFrequency"  visibleBindingValue="0" alwaysUseInDialogHeightCalc="true" fontColor="darkgray" fontSize="small" alignWithControl="true">
                 <Label>Device will only update when requested.</Label>
             </Field>
-	    </ConfigUI>
-	    <States>
+        </ConfigUI>
+        <States>
             <State id="Mbps_download">
                 <ValueType>Number</ValueType>
                 <TriggerLabel>Download Speed (Mbps)</TriggerLabel>
