@@ -232,6 +232,18 @@ class Plugin(indigo.PluginBase):
     #-------------------------------------------------------------------------------
     # Menu Methods
     #-------------------------------------------------------------------------------
+    def checkForUpdates(self):
+        self.updater.checkForUpdate()
+
+    #-------------------------------------------------------------------------------
+    def updatePlugin(self):
+        self.updater.update()
+
+    #-------------------------------------------------------------------------------
+    def forceUpdate(self):
+        self.updater.update(currentVersion='0.0.0')
+
+    #-------------------------------------------------------------------------------
     def toggleDebug(self):
         if self.debug:
             self.logger.debug("Debug logging disabled")
@@ -281,7 +293,6 @@ class Plugin(indigo.PluginBase):
 
         #-------------------------------------------------------------------------------
         def updateState(self):
-            self.logger.debug("updateState: {}".format(self.name))
             newStates = []
             servers = filter(None, (self.props.get(key) for key in serverFields))
             if self.logic == "ANY":
@@ -327,7 +338,6 @@ class Plugin(indigo.PluginBase):
 
         #-------------------------------------------------------------------------------
         def updateState(self):
-            self.logger.debug("updateState: {}".format(self.name))
             ipAddress = get_host_IP_address(self.props['ipEchoService'])
             self.ipUpdate(ipAddress)
 
@@ -340,7 +350,6 @@ class Plugin(indigo.PluginBase):
 
         #-------------------------------------------------------------------------------
         def updateState(self):
-            self.logger.debug("updateState: {}".format(self.name))
             ipAddress = lookup_IP_address(self.props['domainName'])
             self.ipUpdate(ipAddress)
 
@@ -354,7 +363,6 @@ class Plugin(indigo.PluginBase):
 
         #-------------------------------------------------------------------------------
         def updateState(self):
-            self.logger.debug("updateState: {}".format(self.name))
             try:
                 speedtest_thread = threading.Thread(target=self.performSpeedtest)
                 speedtest_thread.setDaemon(True)
@@ -420,12 +428,13 @@ class Plugin(indigo.PluginBase):
                     newStates = [ {'key':'onOffState','value':False} ]
 
                 finally:
-                    self.device.updateStatesOnServer(newStates)
-                    self.lastCheck  = datetime.now()
                     self.logger.debug("performSpeedtest: {} seconds".format( (datetime.now()-speedtestStartTime).total_seconds() ) )
+                    self.device.updateStatesOnServer(newStates)
                     self.plugin.speedtest_lock.release()
             else:
                 self.logger.error("Unable to acquire lock")
+
+            self.lastCheck  = datetime.now()
 
 ###############################################################################
 # Utilities
