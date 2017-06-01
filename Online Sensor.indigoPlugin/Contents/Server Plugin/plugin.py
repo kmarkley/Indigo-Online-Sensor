@@ -40,23 +40,23 @@ defaultProps = {
         'checkServer6':     "209.244.0.4",      # level3
         'checkServer7':     "37.235.1.174",     # freeDNS
         'checkServer8':     "37.235.1.177",     # freeDNS
-        'updateFrequency':  "5",
+        'updateFrequency':  "300",
         'sensorLogic':      "ANY",
         },
     'publicIP': {
         'ipEchoService':    "http://ipecho.net/plain",
-        'updateFrequency':  "15",
+        'updateFrequency':  "900",
         },
     'lookupIP': {
         'domainName':       "localhost",
-        'updateFrequency':  "15",
+        'updateFrequency':  "900",
         },
     'speedtest': {
         'testSelection':    "BOTH",
         'threshold_str':    "10.0",
         'threshold_float':  10.0,
         'distanceUnit':     "mi",
-        'updateFrequency':  "360",
+        'updateFrequency':  "21600",
         },
     }
 
@@ -103,7 +103,7 @@ class Plugin(indigo.PluginBase):
                 loopTime = datetime.now()
                 for devId, device in self.deviceDict.items():
                     device.loopAction()
-                self.sleep((loopTime+timedelta(seconds=5)-datetime.now()).total_seconds())
+                self.sleep((loopTime+timedelta(seconds=1)-datetime.now()).total_seconds())
         except self.StopThread:
             pass    # Optionally catch the StopThread exception and do any needed cleanup.
 
@@ -177,10 +177,16 @@ class Plugin(indigo.PluginBase):
         for key, value in defaultProps[device.deviceTypeId].items():
             if (key not in serverFields) and ((key not in theProps) or not theProps[key]):
                 theProps[key] = value
+
+        # update frequency from minutes to seconds
+        if str(theProps['version']) < "0.0.9":
+            theProps['updateFrequency'] = str(zint(theProps['updateFrequency']) * 60)
+
         # delete obsolete props
         for key in theProps:
             if (key not in defaultProps[device.deviceTypeId]):
                 del theProps[key]
+
         # push to server
         theProps['version'] = self.pluginVersion
         device.replacePluginPropsOnServer(theProps)
@@ -255,7 +261,7 @@ class Plugin(indigo.PluginBase):
         #-------------------------------------------------------------------------------
         def loopAction(self):
             if self.freq:
-                if self.lastCheck + timedelta(minutes=self.freq) < datetime.now():
+                if self.lastCheck + timedelta(seconds=self.freq) < datetime.now():
                     self.updateState()
 
         #-------------------------------------------------------------------------------
@@ -303,12 +309,12 @@ class Plugin(indigo.PluginBase):
             online = bool(ipAddress)
             if online != self.device.onState:
                 self.logger.info('"{}" {}'.format(self.name, ['off','on'][online]))
-                newStates.append({'key':'ipAddressUi','value':["not available",ipAddress][online]})
             if online and (ipAddress != self.device.states['ipAddress']):
                 self.logger.info('"{}" new IP Address: {}'.format(self.name, ipAddress))
                 newStates.append({'key':'ipAddress','value':ipAddress})
                 newStates.append({'key':'lastChange','value':unicode(datetime.now())})
             newStates.append({'key':'onOffState','value':online})
+            newStates.append({'key':'ipAddressUi','value':["not available",ipAddress][online]})
             self.device.updateStatesOnServer(newStates)
             self.lastCheck  = datetime.now()
 
@@ -361,7 +367,6 @@ class Plugin(indigo.PluginBase):
             if self.plugin.speedtest_lock.acquire(False):
                 self.logger.debug("performSpeedtest: {}".format(self.name))
                 speedtestStartTime = datetime.now()
-                newStates = []
 
                 try:
                     s = speedtest.Speedtest()
@@ -386,37 +391,41 @@ class Plugin(indigo.PluginBase):
                     lat  = float(r.server.get('lat',0.))
                     lon  = float(r.server.get('lon',0.))
 
-                    newStates.append({'key':'onOffState',         'value':isOn  })
-                    newStates.append({'key':'Mbps_download',      'value':dnld,       'uiValue':'{:.2f} Mbps'.format(dnld),    'decimalPlaces':2 })
-                    newStates.append({'key':'Mbps_upload',        'value':upld,       'uiValue':'{:.2f} Mbps'.format(upld),    'decimalPlaces':2 })
-                    newStates.append({'key':'ping_latency',       'value':ping,       'uiValue':'{:.2f} ms'.format(ping),      'decimalPlaces':2 })
-                    newStates.append({'key':'server_distance',    'value':dist,       'uiValue':'{:.2f} {}'.format(dist,unit), 'decimalPlaces':2 })
-                    newStates.append({'key':'raw_download',       'value':r.download, 'uiValue':'{} bps'.format(r.download) })
-                    newStates.append({'key':'raw_upload',         'value':r.upload,   'uiValue':'{} bps'.format(r.upload)   })
-                    newStates.append({'key':'server_latitude',    'value':lat,        'uiValue':'{}°'.format(lat)           })
-                    newStates.append({'key':'server_longitude',   'value':lon,        'uiValue':'{}°'.format(lon)           })
-                    newStates.append({'key':'bytes_received',     'value':r.bytes_received           })
-                    newStates.append({'key':'bytes_sent',         'value':r.bytes_sent               })
-                    newStates.append({'key':'timestamp',          'value':r.timestamp                })
-                    newStates.append({'key':'server_id',          'value':zint(r.server.get('id',0)) })
-                    newStates.append({'key':'server_name',        'value':r.server.get('name','')    })
-                    newStates.append({'key':'server_country',     'value':r.server.get('country','') })
-                    newStates.append({'key':'server_countrycode', 'value':r.server.get('cc','')      })
-                    newStates.append({'key':'server_url1',        'value':r.server.get('url','')     })
-                    newStates.append({'key':'server_url2',        'value':r.server.get('url2','')    })
-                    newStates.append({'key':'server_host',        'value':r.server.get('host','')    })
-                    newStates.append({'key':'server_sponsor',     'value':r.server.get('sponsor','') })
-                    newStates.append({'key':'share_link',         'value':r.share()                  })
+                    newStates = [
+                        {'key':'onOffState',         'value':isOn  },
+                        {'key':'Mbps_download',      'value':dnld,       'uiValue':'{:.2f} Mbps'.format(dnld),    'decimalPlaces':2 },
+                        {'key':'Mbps_upload',        'value':upld,       'uiValue':'{:.2f} Mbps'.format(upld),    'decimalPlaces':2 },
+                        {'key':'ping_latency',       'value':ping,       'uiValue':'{:.2f} ms'.format(ping),      'decimalPlaces':2 },
+                        {'key':'server_distance',    'value':dist,       'uiValue':'{:.2f} {}'.format(dist,unit), 'decimalPlaces':2 },
+                        {'key':'raw_download',       'value':r.download, 'uiValue':'{} bps'.format(r.download) },
+                        {'key':'raw_upload',         'value':r.upload,   'uiValue':'{} bps'.format(r.upload)   },
+                        {'key':'server_latitude',    'value':lat,        'uiValue':'{}°'.format(lat)           },
+                        {'key':'server_longitude',   'value':lon,        'uiValue':'{}°'.format(lon)           },
+                        {'key':'bytes_received',     'value':r.bytes_received           },
+                        {'key':'bytes_sent',         'value':r.bytes_sent               },
+                        {'key':'timestamp',          'value':r.timestamp                },
+                        {'key':'server_id',          'value':zint(r.server.get('id',0)) },
+                        {'key':'server_name',        'value':r.server.get('name','')    },
+                        {'key':'server_country',     'value':r.server.get('country','') },
+                        {'key':'server_countrycode', 'value':r.server.get('cc','')      },
+                        {'key':'server_url1',        'value':r.server.get('url','')     },
+                        {'key':'server_url2',        'value':r.server.get('url2','')    },
+                        {'key':'server_host',        'value':r.server.get('host','')    },
+                        {'key':'server_sponsor',     'value':r.server.get('sponsor','') },
+                        {'key':'share_link',         'value':r.share()                  },
+                    ]
 
                 except Exception as e:
                     self.logger.error(e.message)
-                    newStates.append({'key':'onOffState','value':False})
+                    newStates = [ {'key':'onOffState','value':False} ]
 
                 finally:
                     self.device.updateStatesOnServer(newStates)
                     self.lastCheck  = datetime.now()
                     self.logger.debug("performSpeedtest: {} seconds".format( (datetime.now()-speedtestStartTime).total_seconds() ) )
-                    self.speedtest_lock.release()
+                    self.plugin.speedtest_lock.release()
+            else:
+                self.logger.error("Unable to acquire lock")
 
 ###############################################################################
 # Utilities
