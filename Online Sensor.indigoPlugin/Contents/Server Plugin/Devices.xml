@@ -40,8 +40,6 @@
                 <Label>Update Frequency:</Label>
                 <List>
                     <Option value="0">Disable</Option>
-                    <Option value="15">15 Seconds</Option>
-                    <Option value="30">30 Seconds</Option>
                     <Option value="60">1 Minute</Option>
                     <Option value="120">2 Minutes</Option>
                     <Option value="300">5 Minutes</Option>
@@ -49,6 +47,8 @@
                     <Option value="900">15 Minutes</Option>
                     <Option value="1800">30 Minutes</Option>
                     <Option value="3600">1 Hour</Option>
+                    <Option value="10800">3 Hours</Option>
+                    <Option value="21600">6 Hours</Option>
                 </List>
             </Field>
             <Field id="disabledLabel" type="label" visibleBindingId="updateFrequency"  visibleBindingValue="0" alwaysUseInDialogHeightCalc="true" fontColor="darkgray" fontSize="small" alignWithControl="true">
@@ -63,6 +63,49 @@
                     <Option value="ANY">ANY</Option>
                     <Option value="ALL">ALL</Option>
                 </List>
+            </Field>
+        </ConfigUI>
+        <States>
+            <State id="lastUp">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Last Up</TriggerLabel>
+                <ControlPageLabel>Last Up</ControlPageLabel>
+            </State>
+            <State id="lastDn">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Last Down</TriggerLabel>
+                <ControlPageLabel>Last Down</ControlPageLabel>
+            </State>
+        </States>
+    </Device>
+    <Device type="sensor" id="lanPing">
+        <Name>LAN Ping</Name>
+        <ConfigUI>
+            <Field id="checkServer1" type="textfield">
+                <Label>IP Address:</Label>
+            </Field>
+            <Field id="spacer1" type="label">
+                <Label> </Label>
+            </Field>
+            <Field id="updateFrequency" type="menu" defaultValue="300">
+                <Label>Update Frequency:</Label>
+                <List>
+                    <Option value="0">Disable</Option>
+                    <Option value="5">5 Seconds</Option>
+                    <Option value="10">10 Seconds</Option>
+                    <Option value="15">15 Seconds</Option>
+                    <Option value="30">30 Seconds</Option>
+                    <Option value="60">1 Minute</Option>
+                    <Option value="120">2 Minutes</Option>
+                    <Option value="300">5 Minutes</Option>
+                    <Option value="600">10 Minutes</Option>
+                    <Option value="900">15 Minutes</Option>
+                    <Option value="1800">30 Minutes</Option>
+                    <Option value="3600">1 Hour</Option>
+                </List>
+            </Field>
+            <Field id="disabledLabel" type="label" visibleBindingId="updateFrequency"  visibleBindingValue="0" alwaysUseInDialogHeightCalc="true" fontColor="darkgray" fontSize="small" alignWithControl="true">
+                <Label>Device will only update when requested.</Label>
             </Field>
         </ConfigUI>
         <States>

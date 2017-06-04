@@ -12,6 +12,18 @@
 			</Field>
 		</ConfigUI>
 	</MenuItem>
+	<MenuItem id="lanPing">
+		<Name>Create Sample LAN Ping Device</Name>
+		<CallbackMethod>createSampleDevice</CallbackMethod>
+		<ConfigUI>
+		    <Field id="sampleLabel" type="label">
+		        <Label>Create a device that pings a local IP address. You can customize the device after it is created.</Label>
+		    </Field>
+			<Field id="deviceName" type="textfield" defaultValue="LAN Ping">
+				<Label>Device Name:</Label>
+			</Field>
+		</ConfigUI>
+	</MenuItem>
 	<MenuItem id="publicIP">
 		<Name>Create Sample Public IP Device</Name>
 		<CallbackMethod>createSampleDevice</CallbackMethod>

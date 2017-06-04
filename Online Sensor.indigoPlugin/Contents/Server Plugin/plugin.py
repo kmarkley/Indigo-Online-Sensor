@@ -25,6 +25,7 @@ try:
     from shlex import quote as cmd_quote
 except ImportError:
     from pipes import quote as cmd_quote
+from ghpu import GitHubPluginUpdater
 
 ###############################################################################
 # these are used to create sample devices,
@@ -42,6 +43,10 @@ defaultProps = {
         'checkServer8':     "37.235.1.177",     # freeDNS
         'updateFrequency':  "300",
         'sensorLogic':      "ANY",
+        },
+    'lanPing': {
+        'checkServer1':     "127.0.0.1",        # localhost
+        'updateFrequency':  "60",
         },
     'publicIP': {
         'ipEchoService':    "http://ipecho.net/plain",
@@ -68,6 +73,7 @@ class Plugin(indigo.PluginBase):
     #-------------------------------------------------------------------------------
     def __init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs):
         indigo.PluginBase.__init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs)
+        self.updater = GitHubPluginUpdater(self)
 
     def __del__(self):
         indigo.PluginBase.__del__(self)
@@ -117,7 +123,9 @@ class Plugin(indigo.PluginBase):
 
         if device.configured:
             if device.deviceTypeId == 'onlineSensor':
-                self.deviceDict[device.id] = self.PingDevice(device, self)
+                self.deviceDict[device.id] = self.OnlineSensorDevice(device, self)
+            elif device.deviceTypeId == 'lanPing':
+                self.deviceDict[device.id] = self.LanPingDevice(device, self)
             elif device.deviceTypeId == 'publicIP':
                 self.deviceDict[device.id] = self.PublicIpDevice(device, self)
             elif device.deviceTypeId == 'lookupIP':
@@ -142,6 +150,12 @@ class Plugin(indigo.PluginBase):
                 if (key in serverFields) and value:
                     if not any([is_valid_hostname(value),is_valid_ipv4_address(value),is_valid_ipv6_address(value)]):
                         errorsDict[key] = "Not valid IP or host name"
+
+        # LAN PING
+        if typeId == 'lanPing':
+            value = valuesDict['checkServer1']
+            if not any([is_valid_ipv4_address(value),is_valid_ipv6_address(value)]):
+                errorsDict['checkServer1'] = "Not valid IP addess"
 
         # PUBLIC IP
         elif typeId == 'publicIP':
@@ -179,7 +193,7 @@ class Plugin(indigo.PluginBase):
                 theProps[key] = value
 
         # update frequency from minutes to seconds
-        if str(theProps['version']) < "0.0.9":
+        if str(theProps.get('version',"Z.Z.Z")) < "0.0.9":
             theProps['updateFrequency'] = str(zint(theProps['updateFrequency']) * 60)
 
         # delete obsolete props
@@ -227,7 +241,7 @@ class Plugin(indigo.PluginBase):
             self.deviceDict[device.id].updateState()
         # UNKNOWN
         else:
-            self.logger.debug('"{}" {} request ignored'.format(device.name, unicode(action.sensorAction)))
+            self.logger.error('"{}" {} request ignored'.format(device.name, unicode(action.sensorAction)))
 
     #-------------------------------------------------------------------------------
     # Menu Methods
@@ -255,7 +269,7 @@ class Plugin(indigo.PluginBase):
     ###############################################################################
     # Classes
     ###############################################################################
-    class OnlineSensor(object):
+    class SensorBase(object):
 
         #-------------------------------------------------------------------------------
         def __init__(self, device, plugin):
@@ -284,11 +298,11 @@ class Plugin(indigo.PluginBase):
 
 
     ###############################################################################
-    class PingDevice(OnlineSensor):
+    class OnlineSensorDevice(SensorBase):
 
         #-------------------------------------------------------------------------------
         def __init__(self, device, plugin):
-            plugin.OnlineSensor.__init__(self, device, plugin)
+            plugin.SensorBase.__init__(self, device, plugin)
             self.logic  = self.props.get('sensorLogic',"ANY")
 
         #-------------------------------------------------------------------------------
@@ -308,11 +322,31 @@ class Plugin(indigo.PluginBase):
             self.lastCheck  = datetime.now()
 
     ###############################################################################
-    class IpDevice(OnlineSensor):
+    class LanPingDevice(SensorBase):
 
         #-------------------------------------------------------------------------------
         def __init__(self, device, plugin):
-            plugin.OnlineSensor.__init__(self, device, plugin)
+            plugin.SensorBase.__init__(self, device, plugin)
+            self.server = self.props.get('checkServer1','127.0.0.1')
+
+        #-------------------------------------------------------------------------------
+        def updateState(self):
+            newStates = []
+            servers = filter(None, (self.props.get(key) for key in serverFields))
+            online = do_ping(self.server)
+            if online != self.device.onState:
+                self.logger.info('"{}" {}'.format(self.name, ['off','on'][online]))
+                newStates.append({'key':['lastDn','lastUp'][online],'value':unicode(datetime.now())})
+            newStates.append({'key':'onOffState','value':online})
+            self.device.updateStatesOnServer(newStates)
+            self.lastCheck  = datetime.now()
+
+    ###############################################################################
+    class IpBaseDevice(SensorBase):
+
+        #-------------------------------------------------------------------------------
+        def __init__(self, device, plugin):
+            plugin.SensorBase.__init__(self, device, plugin)
 
         #-------------------------------------------------------------------------------
         def ipUpdate(self, ipAddress):
@@ -330,11 +364,11 @@ class Plugin(indigo.PluginBase):
             self.lastCheck  = datetime.now()
 
     ###############################################################################
-    class PublicIpDevice(IpDevice):
+    class PublicIpDevice(IpBaseDevice):
 
         #-------------------------------------------------------------------------------
         def __init__(self, device, plugin):
-            plugin.IpDevice.__init__(self, device, plugin)
+            plugin.IpBaseDevice.__init__(self, device, plugin)
 
         #-------------------------------------------------------------------------------
         def updateState(self):
@@ -342,11 +376,11 @@ class Plugin(indigo.PluginBase):
             self.ipUpdate(ipAddress)
 
     ###############################################################################
-    class LookupIpDevice(IpDevice):
+    class LookupIpDevice(IpBaseDevice):
 
         #-------------------------------------------------------------------------------
         def __init__(self, device, plugin):
-            plugin.IpDevice.__init__(self, device, plugin)
+            plugin.IpBaseDevice.__init__(self, device, plugin)
 
         #-------------------------------------------------------------------------------
         def updateState(self):
@@ -354,11 +388,11 @@ class Plugin(indigo.PluginBase):
             self.ipUpdate(ipAddress)
 
     ###############################################################################
-    class SpeedtestDevice(OnlineSensor):
+    class SpeedtestDevice(SensorBase):
 
         #-------------------------------------------------------------------------------
         def __init__(self, device, plugin):
-            plugin.OnlineSensor.__init__(self, device, plugin)
+            plugin.SensorBase.__init__(self, device, plugin)
 
 
         #-------------------------------------------------------------------------------
