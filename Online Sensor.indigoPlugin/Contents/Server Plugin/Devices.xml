@@ -91,6 +91,7 @@
                 <Label>Update Frequency:</Label>
                 <List>
                     <Option value="0">Disable</Option>
+                    <Option value="2">2 Seconds</Option>
                     <Option value="5">5 Seconds</Option>
                     <Option value="10">10 Seconds</Option>
                     <Option value="15">15 Seconds</Option>
