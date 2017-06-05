@@ -70,6 +70,9 @@ defaultProps = {
 serverFields = ['checkServer1','checkServer2','checkServer3','checkServer4',
                 'checkServer5','checkServer6','checkServer7','checkServer8']
 
+kAutomaticUpdate = False
+kRequestedUpdate = True
+
 ################################################################################
 class Plugin(indigo.PluginBase):
     #-------------------------------------------------------------------------------
@@ -86,6 +89,7 @@ class Plugin(indigo.PluginBase):
     #-------------------------------------------------------------------------------
     def startup(self):
         self.debug = self.pluginPrefs.get('showDebugInfo',False)
+        self.force = self.pluginPrefs.get('forceUpdate',False)
         self.logger.debug("startup")
         if self.debug:
             self.logger.debug("Debug logging enabled")
@@ -100,6 +104,7 @@ class Plugin(indigo.PluginBase):
     def closedPrefsConfigUi(self, valuesDict, userCancelled):
         self.logger.debug("closedPrefsConfigUi")
         if not userCancelled:
+            self.force = valuesDict.get('forceUpdate',False)
             self.debug = valuesDict.get('showDebugInfo',False)
             if self.debug:
                 self.logger.debug("Debug logging enabled")
@@ -283,22 +288,25 @@ class SensorBase(threading.Thread):
         self.device     = device
         self.id         = device.id
         self.name       = device.name
+        self.onState    = device.onState
         self.props      = device.pluginProps
         self.freq       = zint(self.props['updateFrequency'])
         self.delta      = timedelta(seconds=self.freq)
         self.lastCheck  = device.lastChanged
+        self.newStates  = list()
+        self.updateType = kAutomaticUpdate
 
     #-------------------------------------------------------------------------------
     def run(self):
         self.logger.debug('Thread started: {}'.format(self.name))
         while not self.cancelled:
             try:
-                task = self.queue.get(True,5)
-                if task == indigo.kUniversalAction.RequestStatus:
-                    self.lastCheck = datetime.now()
-                    self.updateDeviceState()
-                else:
-                    self.logger.error('"{}" {} request ignored'.format(device.name, unicode(task)))
+                self.updateType = self.queue.get(True,5)
+                self.lastCheck = datetime.now()
+                self.getDeviceStates()
+                self.logOnOff()
+                self.saveDeviceStates()
+                self.queue.task_done()
             except Queue.Empty:
                 pass
             except Exception as e:
@@ -314,21 +322,38 @@ class SensorBase(threading.Thread):
     def loopAction(self):
         if self.freq:
             if self.lastCheck + self.delta < datetime.now():
-                self.queue.put(indigo.kUniversalAction.RequestStatus)
+                self.queue.put(kAutomaticUpdate)
 
     #-------------------------------------------------------------------------------
     def actionControl(self, action):
         if action.sensorAction == indigo.kUniversalAction.RequestStatus:
             self.logger.info('"{}" status request'.format(self.name))
-            self.queue.put(action.sensorAction)
+            self.queue.put(kRequestedUpdate)
         # UNKNOWN
         else:
             self.logger.error('"{}" {} request ignored'.format(self.name, unicode(action.sensorAction)))
 
     #-------------------------------------------------------------------------------
+    def saveDeviceStates(self):
+        if (self.updateType or self.plugin.force) and (len(self.newStates) == 0):
+            self.newStates.append({'key':'onOffState', 'value':self.device.states['onOffState']})
+        if len(self.newStates) > 0:
+            if self.plugin.debug: # don't fill up plugin log unless actively debugging
+                self.logger.debug('updating states on device "{0}":'.format(self.name))
+                for item in self.newStates:
+                    self.logger.debug('{:>16}: {}'.format(item['key'],item['value']))
+            self.device.updateStatesOnServer(self.newStates)
+            self.newStates = list()
+
+    #-------------------------------------------------------------------------------
+    def logOnOff(self):
+        if self.onState != self.device.onState:
+            self.logger.info('"{}" {}'.format(self.name, ['off','on'][self.onState]))
+
+    #-------------------------------------------------------------------------------
     # abstract methods
     #-------------------------------------------------------------------------------
-    def updateDeviceState(self):
+    def getDeviceStates(self):
         raise NotImplementedError
 
 
@@ -342,18 +367,15 @@ class OnlineSensorDevice(SensorBase):
         self.servers = filter(None, (self.props.get(key) for key in serverFields))
 
     #-------------------------------------------------------------------------------
-    def updateDeviceState(self):
-        newStates = []
+    def getDeviceStates(self):
         if self.logic == "ANY":
             shuffle(self.servers)
-            online = any(do_ping(server) for server in self.servers)
+            self.onState = any(do_ping(server) for server in self.servers)
         else:
-            online = all(do_ping(server) for server in self.servers)
-        if online != self.device.onState:
-            self.logger.info('"{}" {}'.format(self.name, ['off','on'][online]))
-            newStates.append({'key':['lastDn','lastUp'][online],'value':unicode(datetime.now())})
-        newStates.append({'key':'onOffState','value':online})
-        self.device.updateStatesOnServer(newStates)
+            self.onState = all(do_ping(server) for server in self.servers)
+        if self.onState != self.device.onState:
+            self.newStates.append({'key':['lastDn','lastUp'][self.onState],'value':unicode(datetime.now())})
+            self.newStates.append({'key':'onOffState','value':self.onState})
 
 ###############################################################################
 class LanPingDevice(SensorBase):
@@ -364,14 +386,11 @@ class LanPingDevice(SensorBase):
         self.server = self.props.get('checkServer1','127.0.0.1')
 
     #-------------------------------------------------------------------------------
-    def updateDeviceState(self):
-        newStates = []
-        online = do_ping(self.server)
-        if online != self.device.onState:
-            self.logger.info('"{}" {}'.format(self.name, ['off','on'][online]))
-            newStates.append({'key':['lastDn','lastUp'][online],'value':unicode(datetime.now())})
-        newStates.append({'key':'onOffState','value':online})
-        self.device.updateStatesOnServer(newStates)
+    def getDeviceStates(self):
+        self.onState = do_ping(self.server)
+        if self.onState != self.device.onState:
+            self.newStates.append({'key':['lastDn','lastUp'][self.onState],'value':unicode(datetime.now())})
+            self.newStates.append({'key':'onOffState','value':self.onState})
 
 ###############################################################################
 class IpBaseDevice(SensorBase):
@@ -382,17 +401,15 @@ class IpBaseDevice(SensorBase):
 
     #-------------------------------------------------------------------------------
     def ipUpdate(self, ipAddress):
-        newStates = []
-        online = bool(ipAddress)
-        if online != self.device.onState:
-            self.logger.info('"{}" {}'.format(self.name, ['off','on'][online]))
-        if online and (ipAddress != self.device.states['ipAddress']):
-            self.logger.info('"{}" new IP Address: {}'.format(self.name, ipAddress))
-            newStates.append({'key':'ipAddress','value':ipAddress})
-            newStates.append({'key':'lastChange','value':unicode(datetime.now())})
-        newStates.append({'key':'onOffState','value':online})
-        newStates.append({'key':'ipAddressUi','value':["not available",ipAddress][online]})
-        self.device.updateStatesOnServer(newStates)
+        self.onState = bool(ipAddress)
+        if self.onState != self.device.onState:
+            self.newStates.append({'key':'onOffState','value':self.onState})
+        if ipAddress != self.device.states['ipAddress']:
+            self.newStates.append({'key':'ipAddressUi','value':["not available",ipAddress][self.onState]})
+            if self.onState:
+                self.logger.info('"{}" new IP Address: {}'.format(self.name, ipAddress))
+                self.newStates.append({'key':'ipAddress','value':ipAddress})
+                self.newStates.append({'key':'lastChange','value':unicode(datetime.now())})
 
 ###############################################################################
 class PublicIpDevice(IpBaseDevice):
@@ -402,7 +419,7 @@ class PublicIpDevice(IpBaseDevice):
         super(PublicIpDevice, self).__init__(device, plugin)
 
     #-------------------------------------------------------------------------------
-    def updateDeviceState(self):
+    def getDeviceStates(self):
         ipAddress = get_host_IP_address(self.props['ipEchoService'])
         self.ipUpdate(ipAddress)
 
@@ -414,7 +431,7 @@ class LookupIpDevice(IpBaseDevice):
         super(LookupIpDevice, self).__init__(device, plugin)
 
     #-------------------------------------------------------------------------------
-    def updateDeviceState(self):
+    def getDeviceStates(self):
         ipAddress = lookup_IP_address(self.props['domainName'])
         self.ipUpdate(ipAddress)
 
@@ -426,12 +443,11 @@ class SpeedtestDevice(SensorBase):
         super(SpeedtestDevice, self).__init__(device, plugin)
 
     #-------------------------------------------------------------------------------
-    def updateDeviceState(self):
+    def getDeviceStates(self):
         # global lock so only one speedtest device may update at a time
         if self.plugin.speedtest_lock.acquire(False):
             self.logger.debug("performSpeedtest: {}".format(self.name))
             speedtestStartTime = datetime.now()
-
             try:
                 s = speedtest.Speedtest()
                 self.logger.debug("  ...get best server...")
@@ -455,7 +471,7 @@ class SpeedtestDevice(SensorBase):
                 lat  = float(r.server.get('lat',0.))
                 lon  = float(r.server.get('lon',0.))
 
-                newStates = [
+                self.newStates = [
                     {'key':'onOffState',         'value':isOn  },
                     {'key':'Mbps_download',      'value':dnld,       'uiValue':'{:.2f} Mbps'.format(dnld),    'decimalPlaces':2 },
                     {'key':'Mbps_upload',        'value':upld,       'uiValue':'{:.2f} Mbps'.format(upld),    'decimalPlaces':2 },
@@ -478,17 +494,18 @@ class SpeedtestDevice(SensorBase):
                     {'key':'server_sponsor',     'value':r.server.get('sponsor','') },
                     {'key':'share_link',         'value':r.share()                  },
                 ]
+                self.onState = isOn
 
             except Exception as e:
                 self.logger.error(e.message)
-                newStates = [ {'key':'onOffState','value':False} ]
+                self.newStates = [ {'key':'onOffState','value':False} ]
+                self.onState = False
 
             finally:
                 self.logger.debug("performSpeedtest: {} seconds".format( (datetime.now()-speedtestStartTime).total_seconds() ) )
-                self.device.updateStatesOnServer(newStates)
                 self.plugin.speedtest_lock.release()
         else:
-            self.logger.error("Unable to acquire lock, retry in {} seconds".format(k_speedtest_retry_sleep))
+            self.logger.error("Unable to acquire lock")
 
 ###############################################################################
 # Utilities
