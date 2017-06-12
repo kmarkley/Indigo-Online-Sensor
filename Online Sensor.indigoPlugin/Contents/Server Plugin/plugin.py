@@ -15,8 +15,7 @@
 import indigo
 import threading
 import Queue
-from datetime import datetime, timedelta
-from time import sleep
+import time
 import subprocess
 import re
 import socket
@@ -73,6 +72,10 @@ serverFields = ['checkServer1','checkServer2','checkServer3','checkServer4',
 kAutomaticUpdate = False
 kRequestedUpdate = True
 
+kPluginUpdateCheckHours = 24
+
+kStrftimeFormat = '%Y-%m-%d %H:%M:%S'
+
 ################################################################################
 class Plugin(indigo.PluginBase):
     #-------------------------------------------------------------------------------
@@ -80,6 +83,7 @@ class Plugin(indigo.PluginBase):
         indigo.PluginBase.__init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs)
         self.updater = GitHubPluginUpdater(self)
         self.speedtest_lock = threading.Lock()
+        self.deviceDict = dict()
 
     def __del__(self):
         indigo.PluginBase.__del__(self)
@@ -93,12 +97,16 @@ class Plugin(indigo.PluginBase):
         self.logger.debug("startup")
         if self.debug:
             self.logger.debug("Debug logging enabled")
-        self.deviceDict = dict()
+        self.pluginNextUpdateCheck = self.pluginPrefs.get('pluginNextUpdateCheck',0)
+        self.logger.debug(str(self.pluginNextUpdateCheck))
+        self.loopTime = time.time()
 
     #-------------------------------------------------------------------------------
     def shutdown(self):
         self.logger.debug("shutdown")
         self.pluginPrefs['showDebugInfo'] = self.debug
+        self.pluginPrefs['forceUpdate'] = self.force
+        self.pluginPrefs['pluginNextUpdateCheck'] = self.pluginNextUpdateCheck
 
     #-------------------------------------------------------------------------------
     def closedPrefsConfigUi(self, valuesDict, userCancelled):
@@ -113,10 +121,16 @@ class Plugin(indigo.PluginBase):
     def runConcurrentThread(self):
         try:
             while True:
-                loopTime = datetime.now()
+                self.loopTime = time.time()
                 for devId, device in self.deviceDict.items():
                     device.loopAction()
-                self.sleep((loopTime+timedelta(seconds=0.5)-datetime.now()).total_seconds())
+
+                if self.loopTime > self.pluginNextUpdateCheck:
+                    self.checkForUpdates()
+                    self.pluginNextUpdateCheck = self.loopTime + (kPluginUpdateCheckHours*60*60)
+
+                self.sleep(self.loopTime+1-time.time())
+
         except self.StopThread:
             pass    # Optionally catch the StopThread exception and do any needed cleanup.
 
@@ -145,8 +159,8 @@ class Plugin(indigo.PluginBase):
     #-------------------------------------------------------------------------------
     def deviceStopComm(self, device):
         self.logger.debug("deviceStopComm: "+device.name)
-        self.deviceDict[device.id].cancel()
         if device.id in self.deviceDict:
+            self.deviceDict[device.id].cancel()
             del self.deviceDict[device.id]
 
     #-------------------------------------------------------------------------------
@@ -194,10 +208,11 @@ class Plugin(indigo.PluginBase):
     #-------------------------------------------------------------------------------
     def updateDeviceVersion(self, device):
         self.logger.debug("updateDeviceVersion: " + device.name)
-        theProps = device.pluginProps
         # update states
         device.stateListOrDisplayStateIdChanged()
+
         # add new props
+        theProps = device.pluginProps
         for key, value in defaultProps[device.deviceTypeId].items():
             if (key not in serverFields) and ((key not in theProps) or not theProps[key]):
                 theProps[key] = value
@@ -241,15 +256,6 @@ class Plugin(indigo.PluginBase):
             return (True, valuesDict)
 
     #-------------------------------------------------------------------------------
-    # Action Methods
-    #-------------------------------------------------------------------------------
-    def actionControlSensor(self, action, device):
-        self.logger.debug("actionControlSensor: "+device.name)
-        self.deviceDict[device.id].actionControl(action)
-
-    #-------------------------------------------------------------------------------
-    # Menu Methods
-    #-------------------------------------------------------------------------------
     def checkForUpdates(self):
         self.updater.checkForUpdate()
 
@@ -269,6 +275,13 @@ class Plugin(indigo.PluginBase):
         else:
             self.debug = True
             self.logger.debug("Debug logging enabled")
+
+    #-------------------------------------------------------------------------------
+    # Action Methods
+    #-------------------------------------------------------------------------------
+    def actionControlSensor(self, action, device):
+        self.logger.debug("actionControlSensor: "+device.name)
+        self.deviceDict[device.id].actionControl(action)
 
 ###############################################################################
 # Classes
@@ -291,8 +304,7 @@ class SensorBase(threading.Thread):
         self.onState    = device.onState
         self.props      = device.pluginProps
         self.freq       = zint(self.props['updateFrequency'])
-        self.delta      = timedelta(seconds=self.freq)
-        self.lastCheck  = device.lastChanged
+        self.lastCheck  = time.mktime(device.lastChanged.timetuple())
         self.newStates  = list()
         self.updateType = kAutomaticUpdate
 
@@ -301,8 +313,8 @@ class SensorBase(threading.Thread):
         self.logger.debug('Thread started: {}'.format(self.name))
         while not self.cancelled:
             try:
-                self.updateType = self.queue.get(True,5)
-                self.lastCheck = datetime.now()
+                self.updateType = self.queue.get(True,2)
+                self.lastCheck = time.time()
                 self.getDeviceStates()
                 self.logOnOff()
                 self.saveDeviceStates()
@@ -312,6 +324,8 @@ class SensorBase(threading.Thread):
             except Exception as e:
                 self.logger.error('"{}" thread error:'.format(self.name))
                 self.logger.error(e)
+        else:
+            self.logger.debug('Thread cancelled: {}'.format(self.name))
 
     #-------------------------------------------------------------------------------
     def cancel(self):
@@ -321,7 +335,7 @@ class SensorBase(threading.Thread):
     #-------------------------------------------------------------------------------
     def loopAction(self):
         if self.freq:
-            if self.lastCheck + self.delta < datetime.now():
+            if self.lastCheck + self.freq < self.plugin.loopTime:
                 self.queue.put(kAutomaticUpdate)
 
     #-------------------------------------------------------------------------------
@@ -374,7 +388,7 @@ class OnlineSensorDevice(SensorBase):
         else:
             self.onState = all(do_ping(server) for server in self.servers)
         if self.onState != self.device.onState:
-            self.newStates.append({'key':['lastDn','lastUp'][self.onState],'value':unicode(datetime.now())})
+            self.newStates.append({'key':['lastDn','lastUp'][self.onState],'value':time.strftime(kStrftimeFormat,self.lastCheck)})
             self.newStates.append({'key':'onOffState','value':self.onState})
 
 ###############################################################################
@@ -389,7 +403,7 @@ class LanPingDevice(SensorBase):
     def getDeviceStates(self):
         self.onState = do_ping(self.server)
         if self.onState != self.device.onState:
-            self.newStates.append({'key':['lastDn','lastUp'][self.onState],'value':unicode(datetime.now())})
+            self.newStates.append({'key':['lastDn','lastUp'][self.onState],'value':time.strftime(kStrftimeFormat,self.lastCheck)})
             self.newStates.append({'key':'onOffState','value':self.onState})
 
 ###############################################################################
@@ -409,7 +423,7 @@ class IpBaseDevice(SensorBase):
             if self.onState:
                 self.logger.info('"{}" new IP Address: {}'.format(self.name, ipAddress))
                 self.newStates.append({'key':'ipAddress','value':ipAddress})
-                self.newStates.append({'key':'lastChange','value':unicode(datetime.now())})
+                self.newStates.append({'key':'lastChange','value':time.strftime(kStrftimeFormat,self.lastCheck)})
 
 ###############################################################################
 class PublicIpDevice(IpBaseDevice):
@@ -447,7 +461,6 @@ class SpeedtestDevice(SensorBase):
         # global lock so only one speedtest device may update at a time
         if self.plugin.speedtest_lock.acquire(False):
             self.logger.debug("performSpeedtest: {}".format(self.name))
-            speedtestStartTime = datetime.now()
             try:
                 s = speedtest.Speedtest()
                 self.logger.debug("  ...get best server...")
@@ -502,7 +515,7 @@ class SpeedtestDevice(SensorBase):
                 self.onState = False
 
             finally:
-                self.logger.debug("performSpeedtest: {} seconds".format( (datetime.now()-speedtestStartTime).total_seconds() ) )
+                self.logger.debug("performSpeedtest: {} seconds".format( time.time()-self.lastCheck ) )
                 self.plugin.speedtest_lock.release()
         else:
             self.logger.error("Unable to acquire lock")
