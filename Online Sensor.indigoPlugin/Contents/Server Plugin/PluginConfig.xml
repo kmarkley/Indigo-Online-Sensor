@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <PluginConfig>
 	<Field id="forceUpdate" type="checkbox">
-		<Label>Force Update:</Label>
-		<Description>Update device in Indigo even when there are no changes.    </Description>
+		<Label>Always Update:</Label>
+		<Description>Always update device in Indigo even when there are no changes.    </Description>
 	</Field>
 	<Field id="showDebugInfo" type="checkbox">
 		<Label>Enable debuging:</Label>

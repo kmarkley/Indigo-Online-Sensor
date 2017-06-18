@@ -43,6 +43,27 @@ Timestamp of the last time the device switched to the **OFF** state.
 * **onOffState**  
 Whether Indigo is connected to the internet.
 
+### 'LAN Ping' devices
+
+#### Configuration
+
+* **Servers**  
+An IP address for the device to ping.
+
+* **Update Frequency**  
+Define how often the device will check (ping) the server(s).
+
+#### States
+
+* **Last Up**  
+Timestamp of the last time the device switched to the **ON** state.
+
+* **Last Down**  
+Timestamp of the last time the device switched to the **OFF** state.
+
+* **onOffState**  
+Whether Indigo is connected to the internet.
+
 ### 'Public IP' devices
 
 #### Configuration

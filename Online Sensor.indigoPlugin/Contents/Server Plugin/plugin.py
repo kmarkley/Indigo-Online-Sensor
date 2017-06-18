@@ -19,7 +19,7 @@ import time
 import subprocess
 import re
 import socket
-import urlparse
+from urlparse import urlparse
 from random import shuffle
 import speedtest
 try:
@@ -44,18 +44,22 @@ defaultProps = {
         'checkServer8':     "37.235.1.177",     # freeDNS
         'updateFrequency':  "300",
         'sensorLogic':      "ANY",
+        'address':          "8.8.8.8",
         },
     'lanPing': {
         'checkServer1':     "127.0.0.1",        # localhost
         'updateFrequency':  "10",
+        'address':          "127.0.0.1",
         },
     'publicIP': {
         'ipEchoService':    "http://ipecho.net/plain",
         'updateFrequency':  "900",
+        'address':          "ipecho.net",
         },
     'lookupIP': {
         'domainName':       "localhost",
         'updateFrequency':  "900",
+        'address':          "localhost",
         },
     'speedtest': {
         'testSelection':    "BOTH",
@@ -63,6 +67,7 @@ defaultProps = {
         'threshold_float':  10.0,
         'distanceUnit':     "mi",
         'updateFrequency':  "21600",
+        'address':          "speedtest.net",
         },
     }
 
@@ -93,7 +98,7 @@ class Plugin(indigo.PluginBase):
     #-------------------------------------------------------------------------------
     def startup(self):
         self.debug = self.pluginPrefs.get('showDebugInfo',False)
-        self.force = self.pluginPrefs.get('forceUpdate',False)
+        self.alwaysUpdate = self.pluginPrefs.get('alwaysUpdate',False)
         self.logger.debug("startup")
         if self.debug:
             self.logger.debug("Debug logging enabled")
@@ -105,14 +110,14 @@ class Plugin(indigo.PluginBase):
     def shutdown(self):
         self.logger.debug("shutdown")
         self.pluginPrefs['showDebugInfo'] = self.debug
-        self.pluginPrefs['forceUpdate'] = self.force
+        self.pluginPrefs['alwaysUpdate'] = self.alwaysUpdate
         self.pluginPrefs['pluginNextUpdateCheck'] = self.pluginNextUpdateCheck
 
     #-------------------------------------------------------------------------------
     def closedPrefsConfigUi(self, valuesDict, userCancelled):
         self.logger.debug("closedPrefsConfigUi")
         if not userCancelled:
-            self.force = valuesDict.get('forceUpdate',False)
+            self.alwaysUpdate = valuesDict.get('alwaysUpdate',False)
             self.debug = valuesDict.get('showDebugInfo',False)
             if self.debug:
                 self.logger.debug("Debug logging enabled")
@@ -170,26 +175,39 @@ class Plugin(indigo.PluginBase):
 
         # ONLINE SENSOR
         if typeId == 'onlineSensor':
-            for key, value in valuesDict.items():
-                if (key in serverFields) and value:
+            address = ""
+            i = 0
+            for key in serverFields:
+                value = valuesDict.get(key,"")
+                if value:
                     if not any([is_valid_hostname(value),is_valid_ipv4_address(value),is_valid_ipv6_address(value)]):
                         errorsDict[key] = "Not valid IP or host name"
+                    if not address:
+                        address = value
+                    else:
+                        i += 1
+            if i:
+                address += " (+{})".format(i)
+            valuesDict['address'] = address
 
         # LAN PING
         if typeId == 'lanPing':
             value = valuesDict['checkServer1']
             if not any([is_valid_ipv4_address(value),is_valid_ipv6_address(value)]):
                 errorsDict['checkServer1'] = "Not valid IP addess"
+            valuesDict['address'] = valuesDict['checkServer1']
 
         # PUBLIC IP
         elif typeId == 'publicIP':
             if not is_valid_url(valuesDict.get("ipEchoService")):
                 errorsDict['ipEchoService'] = "Not a valid URL"
+            valuesDict['address'] = "{uri.netloc}".format(uri=urlparse(valuesDict['ipEchoService']))
 
         # LOOKUP IP
         elif typeId == 'lookupIP':
             if not is_valid_hostname(valuesDict.get('domainName')):
                 errorsDict['domainName'] = "Not a valid domain"
+            valuesDict['address'] = valuesDict['domainName']
 
         # SPEEDTEST
         elif typeId == 'speedtest':
@@ -199,6 +217,7 @@ class Plugin(indigo.PluginBase):
                     raise ValueError("negative value")
             except:
                 errorsDict['threshold_str'] = "Must be a positive real number (or zero)."
+            valuesDict['address'] = "speedtest.net"
 
         if len(errorsDict) > 0:
             return (False, valuesDict, errorsDict)
@@ -349,7 +368,7 @@ class SensorBase(threading.Thread):
 
     #-------------------------------------------------------------------------------
     def saveDeviceStates(self):
-        if (self.updateType or self.plugin.force) and (len(self.newStates) == 0):
+        if (self.updateType or self.plugin.alwaysUpdate) and (len(self.newStates) == 0):
             self.newStates.append({'key':'onOffState', 'value':self.device.states['onOffState']})
         if len(self.newStates) > 0:
             if self.plugin.debug: # don't fill up plugin log unless actively debugging
@@ -388,7 +407,7 @@ class OnlineSensorDevice(SensorBase):
         else:
             self.onState = all(do_ping(server) for server in self.servers)
         if self.onState != self.device.onState:
-            self.newStates.append({'key':['lastDn','lastUp'][self.onState],'value':time.strftime(kStrftimeFormat,self.lastCheck)})
+            self.newStates.append({'key':['lastDn','lastUp'][self.onState],'value':time.strftime(kStrftimeFormat,time.localtime())})
             self.newStates.append({'key':'onOffState','value':self.onState})
 
 ###############################################################################
@@ -403,7 +422,7 @@ class LanPingDevice(SensorBase):
     def getDeviceStates(self):
         self.onState = do_ping(self.server)
         if self.onState != self.device.onState:
-            self.newStates.append({'key':['lastDn','lastUp'][self.onState],'value':time.strftime(kStrftimeFormat,self.lastCheck)})
+            self.newStates.append({'key':['lastDn','lastUp'][self.onState],'value':time.strftime(kStrftimeFormat,time.localtime())})
             self.newStates.append({'key':'onOffState','value':self.onState})
 
 ###############################################################################
@@ -423,7 +442,7 @@ class IpBaseDevice(SensorBase):
             if self.onState:
                 self.logger.info('"{}" new IP Address: {}'.format(self.name, ipAddress))
                 self.newStates.append({'key':'ipAddress','value':ipAddress})
-                self.newStates.append({'key':'lastChange','value':time.strftime(kStrftimeFormat,self.lastCheck)})
+                self.newStates.append({'key':'lastChange','value':time.strftime(kStrftimeFormat,time.localtime())})
 
 ###############################################################################
 class PublicIpDevice(IpBaseDevice):
@@ -588,5 +607,5 @@ def is_valid_ipv6_address(address):
 def is_valid_url(url, qualifying=None):
     min_attributes = ('scheme', 'netloc')
     qualifying = min_attributes if qualifying is None else qualifying
-    token = urlparse.urlparse(url)
+    token = urlparse(url)
     return all([getattr(token, qualifying_attr) for qualifying_attr in qualifying])
