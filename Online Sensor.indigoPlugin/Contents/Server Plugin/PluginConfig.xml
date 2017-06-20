@@ -1,9 +1,12 @@
 <?xml version="1.0"?>
 <PluginConfig>
-	<Field id="forceUpdate" type="checkbox">
+	<Field id="alwaysUpdate" type="checkbox">
 		<Label>Always Update:</Label>
 		<Description>Always update device in Indigo even when there are no changes.    </Description>
 	</Field>
+	<Field id='alwaysUpdateHelp' type='label' fontColor='darkgray' fontSize='small' alignWithControl='true'>
+        <Label>Leave unchecked to reduce communication between plugin and Indigo server.    </Label>
+    </Field>
 	<Field id="showDebugInfo" type="checkbox">
 		<Label>Enable debuging:</Label>
 		<Description>(not recommended)</Description>

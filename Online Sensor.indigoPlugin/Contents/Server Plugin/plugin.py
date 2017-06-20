@@ -103,7 +103,7 @@ class Plugin(indigo.PluginBase):
         if self.debug:
             self.logger.debug("Debug logging enabled")
         self.pluginNextUpdateCheck = self.pluginPrefs.get('pluginNextUpdateCheck',0)
-        self.logger.debug(str(self.pluginNextUpdateCheck))
+        self.logger.debug("Next plugin update check: {}".format(time.ctime(self.pluginNextUpdateCheck)))
         self.loopTime = time.time()
 
     #-------------------------------------------------------------------------------
@@ -323,9 +323,10 @@ class SensorBase(threading.Thread):
         self.onState    = device.onState
         self.props      = device.pluginProps
         self.freq       = zint(self.props['updateFrequency'])
-        self.lastCheck  = time.mktime(device.lastChanged.timetuple())
         self.newStates  = list()
         self.updateType = kAutomaticUpdate
+
+        self.checkTime(time.mktime(device.lastChanged.timetuple()))
 
     #-------------------------------------------------------------------------------
     def run(self):
@@ -333,7 +334,7 @@ class SensorBase(threading.Thread):
         while not self.cancelled:
             try:
                 self.updateType = self.queue.get(True,2)
-                self.lastCheck = time.time()
+                self.checkTime()
                 self.getDeviceStates()
                 self.logOnOff()
                 self.saveDeviceStates()
@@ -354,7 +355,7 @@ class SensorBase(threading.Thread):
     #-------------------------------------------------------------------------------
     def loopAction(self):
         if self.freq:
-            if self.lastCheck + self.freq < self.plugin.loopTime:
+            if self.lastcheck + self.freq < self.plugin.loopTime:
                 self.queue.put(kAutomaticUpdate)
 
     #-------------------------------------------------------------------------------
@@ -384,6 +385,12 @@ class SensorBase(threading.Thread):
             self.logger.info('"{}" {}'.format(self.name, ['off','on'][self.onState]))
 
     #-------------------------------------------------------------------------------
+    def checkTime(self, t=None):
+        if not t: t = time.time()
+        self.lastcheck = t
+        self.timestamp = time.strftime(kStrftimeFormat,time.localtime(t))
+
+    #-------------------------------------------------------------------------------
     # abstract methods
     #-------------------------------------------------------------------------------
     def getDeviceStates(self):
@@ -407,7 +414,7 @@ class OnlineSensorDevice(SensorBase):
         else:
             self.onState = all(do_ping(server) for server in self.servers)
         if self.onState != self.device.onState:
-            self.newStates.append({'key':['lastDn','lastUp'][self.onState],'value':time.strftime(kStrftimeFormat,time.localtime())})
+            self.newStates.append({'key':['lastDn','lastUp'][self.onState],'value':self.timestamp})
             self.newStates.append({'key':'onOffState','value':self.onState})
 
 ###############################################################################
@@ -422,7 +429,7 @@ class LanPingDevice(SensorBase):
     def getDeviceStates(self):
         self.onState = do_ping(self.server)
         if self.onState != self.device.onState:
-            self.newStates.append({'key':['lastDn','lastUp'][self.onState],'value':time.strftime(kStrftimeFormat,time.localtime())})
+            self.newStates.append({'key':['lastDn','lastUp'][self.onState],'value':self.timestamp})
             self.newStates.append({'key':'onOffState','value':self.onState})
 
 ###############################################################################
@@ -442,7 +449,7 @@ class IpBaseDevice(SensorBase):
             if self.onState:
                 self.logger.info('"{}" new IP Address: {}'.format(self.name, ipAddress))
                 self.newStates.append({'key':'ipAddress','value':ipAddress})
-                self.newStates.append({'key':'lastChange','value':time.strftime(kStrftimeFormat,time.localtime())})
+                self.newStates.append({'key':'lastChange','value':self.timestamp})
 
 ###############################################################################
 class PublicIpDevice(IpBaseDevice):
@@ -534,7 +541,7 @@ class SpeedtestDevice(SensorBase):
                 self.onState = False
 
             finally:
-                self.logger.debug("performSpeedtest: {} seconds".format( time.time()-self.lastCheck ) )
+                self.logger.debug("performSpeedtest: {} seconds".format( time.time()-self.lastcheck ) )
                 self.plugin.speedtest_lock.release()
         else:
             self.logger.error("Unable to acquire lock")
@@ -542,18 +549,23 @@ class SpeedtestDevice(SensorBase):
 ###############################################################################
 # Utilities
 ###############################################################################
+
+kPingCmd    = "/sbin/ping -c1 -t1 {}".format
+kCurlCmd    = "curl -m 15 -s {} | egrep -o '{}'".format
+kIpPattern  = "[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}"
+kDigCmd     = "dig +short {}".format
+
 def do_ping(server):
-    cmd = "/sbin/ping -c1 -t1 {}".format(cmd_quote(server))
+    cmd = kPingCmd(cmd_quote(server))
     return (do_shell_script(cmd)[0])
 
 def get_host_IP_address(ipEchoService):
-    ipPattern = '[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}'
-    cmd = "curl -m 15 -s {} | egrep -o '{}'".format(cmd_quote(ipEchoService),ipPattern)
+    cmd = kCurlCmd(cmd_quote(ipEchoService),kIpPattern)
     result, ipAddress = do_shell_script(cmd)
     return ['',ipAddress][result]
 
 def lookup_IP_address(domain):
-    cmd = "dig +short {}".format(cmd_quote(domain))
+    cmd = kDigCmd(cmd_quote(domain))
     result, ipAddress = do_shell_script(cmd)
     return ['',ipAddress][result]
 
