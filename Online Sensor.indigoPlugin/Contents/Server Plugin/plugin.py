@@ -237,7 +237,7 @@ class Plugin(indigo.PluginBase):
                 theProps[key] = value
 
         # update frequency from minutes to seconds
-        if str(theProps.get('version',"Z.Z.Z")) < "0.0.9":
+        if ver(theProps.get('version',"0.0.0")) < ver("0.0.9"):
             theProps['updateFrequency'] = str(zint(theProps['updateFrequency']) * 60)
 
         # delete obsolete props
@@ -621,3 +621,6 @@ def is_valid_url(url, qualifying=None):
     qualifying = min_attributes if qualifying is None else qualifying
     token = urlparse(url)
     return all([getattr(token, qualifying_attr) for qualifying_attr in qualifying])
+
+#-------------------------------------------------------------------------------
+def ver(vstr): return tuple(map(int, (vstr.split('.'))))
