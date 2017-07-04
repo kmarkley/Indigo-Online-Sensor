@@ -442,14 +442,15 @@ class IpBaseDevice(SensorBase):
     #-------------------------------------------------------------------------------
     def ipUpdate(self, ipAddress):
         self.onState = bool(ipAddress)
+        ipAddressUi  = ["not available",ipAddress][self.onState]
         if self.onState != self.device.onState:
             self.newStates.append({'key':'onOffState','value':self.onState})
-        if ipAddress != self.device.states['ipAddress']:
-            self.newStates.append({'key':'ipAddressUi','value':["not available",ipAddress][self.onState]})
-            if self.onState:
+        if self.onState and ipAddress != self.device.states['ipAddress']:
                 self.logger.info('"{}" new IP Address: {}'.format(self.name, ipAddress))
                 self.newStates.append({'key':'ipAddress','value':ipAddress})
                 self.newStates.append({'key':'lastChange','value':self.timestamp})
+        if self.device.states['ipAddressUi'] != ipAddressUi:
+            self.newStates.append({'key':'ipAddressUi','value':ipAddressUi})
 
 ###############################################################################
 class PublicIpDevice(IpBaseDevice):
