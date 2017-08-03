@@ -423,14 +423,21 @@ class LanPingDevice(SensorBase):
     #-------------------------------------------------------------------------------
     def __init__(self, device, plugin):
         super(LanPingDevice, self).__init__(device, plugin)
-        self.server = self.props.get('checkServer1','127.0.0.1')
+        self.server  = self.props.get('checkServer1','127.0.0.1')
+        self.persist = int(self.props.get('persistCycles','1'))
+        self.count   = 0
 
     #-------------------------------------------------------------------------------
     def getDeviceStates(self):
-        self.onState = do_ping(self.server)
-        if self.onState != self.device.onState:
-            self.newStates.append({'key':['lastDn','lastUp'][self.onState],'value':self.timestamp})
-            self.newStates.append({'key':'onOffState','value':self.onState})
+        onState = do_ping(self.server)
+        if onState != self.device.onState:
+            self.count += 1
+            if self.count >= self.persist:
+                self.onState = onState
+                self.newStates.append({'key':['lastDn','lastUp'][self.onState],'value':self.timestamp})
+                self.newStates.append({'key':'onOffState','value':self.onState})
+        else:
+            self.count = 0
 
 ###############################################################################
 class IpBaseDevice(SensorBase):

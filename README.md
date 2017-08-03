@@ -17,7 +17,7 @@ Most people will only need one device of each type, and default setting should w
 
 ## Devices
 
-The plugin defines four Device types: Online Sensor, Public IP, Lookup IP, and Speedtest.
+The plugin defines five Device types: Online Sensor, LAN Ping, Public IP, Lookup IP, and Speedtest.
 
 ### 'Online Sensor' devices
 
@@ -53,6 +53,9 @@ An IP address for the device to ping.
 * **Update Frequency**  
 Define how often the device will check (ping) the server(s).
 
+* **Persist Cycles**  
+Require the same result multiple times before plugin device changes state.  Useful for network devices that occasionally fall off the network, or that intermittently wake from sleep.
+
 #### States
 
 * **Last Up**  
@@ -83,7 +86,7 @@ The apparent public IP address of the machine running Indigo Server.  **Note tha
 Same as above, except that when the device fails to connect the UI displays "N/A".
 
 * **Last Change**  
-Timestamp of the last time the device optained a new IP address.
+Timestamp of the last time the device obtained a new IP address.
 
 * **onOffState**  
 If the last attempt was successful.
@@ -107,7 +110,7 @@ The IP address of the specified domain.  **Note that the state does not change u
 Same as above, except that when the device fails to connect the UI displays "N/A".
 
 * **Last Change**  
-Timestamp of the last time the device optained a new IP address.
+Timestamp of the last time the device obtained a new IP address.
 
 * **onOffState**  
 If the last attempt was successful.
@@ -126,7 +129,7 @@ The minimum tested speed (upload or download) at which the sensor will report ON
 Speedtest.net reports the distance to the server.  This only affects the unit label on control pages (i.e. no conversion takes place).
 
 * **Update Frequency**  
-Define how often the device perform a speedtest.
+Define how often the device will perform a speedtest.
 
 #### States
 

@@ -108,6 +108,16 @@
             <Field id="disabledLabel" type="label" visibleBindingId="updateFrequency"  visibleBindingValue="0" alwaysUseInDialogHeightCalc="true" fontColor="darkgray" fontSize="small" alignWithControl="true">
                 <Label>Device will only update when requested.</Label>
             </Field>
+            <Field id="persistCycles" type="menu" defaultValue="1">
+                <Label>Persist Cycles</Label>
+                <List>
+                    <Option value="1">1</Option>
+                    <Option value="2">2</Option>
+                    <Option value="3">3</Option>
+                    <Option value="4">4</Option>
+                    <Option value="5">5</Option>
+                </List>
+            </Field>
         </ConfigUI>
         <States>
             <State id="lastUp">
