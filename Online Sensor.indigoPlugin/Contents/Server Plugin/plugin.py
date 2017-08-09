@@ -21,6 +21,7 @@ import re
 import socket
 from urlparse import urlparse
 from random import shuffle
+import traceback
 import speedtest
 try:
     from shlex import quote as cmd_quote
@@ -99,7 +100,7 @@ class Plugin(indigo.PluginBase):
     def startup(self):
         self.debug = self.pluginPrefs.get('showDebugInfo',False)
         self.alwaysUpdate = self.pluginPrefs.get('alwaysUpdate',False)
-        self.logger.debug("startup")
+        self.logger.debug("startup v{}".format(self.pluginVersion))
         if self.debug:
             self.logger.debug("Debug logging enabled")
         self.pluginNextUpdateCheck = self.pluginPrefs.get('pluginNextUpdateCheck',0)
@@ -148,18 +149,22 @@ class Plugin(indigo.PluginBase):
             self.updateDeviceVersion(device)
 
         if device.configured:
-            if device.deviceTypeId == 'onlineSensor':
-                self.deviceDict[device.id] = OnlineSensorDevice(device, self)
-            elif device.deviceTypeId == 'lanPing':
-                self.deviceDict[device.id] = LanPingDevice(device, self)
-            elif device.deviceTypeId == 'publicIP':
-                self.deviceDict[device.id] = PublicIpDevice(device, self)
-            elif device.deviceTypeId == 'lookupIP':
-                self.deviceDict[device.id] = LookupIpDevice(device, self)
-            elif device.deviceTypeId == 'speedtest':
-                self.deviceDict[device.id] = SpeedtestDevice(device, self)
-            # start the thread
-            self.deviceDict[device.id].start()
+            try:
+                if device.deviceTypeId == 'onlineSensor':
+                    self.deviceDict[device.id] = OnlineSensorDevice(device, self)
+                elif device.deviceTypeId == 'lanPing':
+                    self.deviceDict[device.id] = LanPingDevice(device, self)
+                elif device.deviceTypeId == 'publicIP':
+                    self.deviceDict[device.id] = PublicIpDevice(device, self)
+                elif device.deviceTypeId == 'lookupIP':
+                    self.deviceDict[device.id] = LookupIpDevice(device, self)
+                elif device.deviceTypeId == 'speedtest':
+                    self.deviceDict[device.id] = SpeedtestDevice(device, self)
+                # start the thread
+                self.deviceDict[device.id].start()
+            except Exception as e:
+                self.logger.error('"{}" start error: {}'.format(device.name, e))
+                self.logger.debug(traceback.format_exc())
 
     #-------------------------------------------------------------------------------
     def deviceStopComm(self, device):
@@ -342,8 +347,8 @@ class SensorBase(threading.Thread):
             except Queue.Empty:
                 pass
             except Exception as e:
-                self.logger.error('"{}" thread error:'.format(self.name))
-                self.logger.error(e)
+                self.logger.error('"{}" thread error: {}'.format(self.name, e))
+                self.logger.debug(traceback.format_exc())
         else:
             self.logger.debug('Thread cancelled: {}'.format(self.name))
 
@@ -549,7 +554,7 @@ class SpeedtestDevice(SensorBase):
                 self.onState = False
 
             finally:
-                self.logger.debug("performSpeedtest: {} seconds".format( time.time()-self.lastcheck ) )
+                self.logger.debug("performSpeedtest: {} seconds".format( logger.debugtime()-self.lastcheck ) )
                 self.plugin.speedtest_lock.release()
         else:
             self.logger.error("Unable to acquire lock")
