@@ -11,7 +11,6 @@
 #
 ###############################################################################
 
-
 import indigo
 import threading
 import Queue
@@ -21,7 +20,6 @@ import re
 import socket
 from urlparse import urlparse
 from random import shuffle
-import traceback
 import speedtest
 try:
     from shlex import quote as cmd_quote
@@ -149,6 +147,7 @@ class Plugin(indigo.PluginBase):
             self.updateDeviceVersion(device)
 
         if device.configured:
+            device.setErrorStateOnServer(None)
             try:
                 if device.deviceTypeId == 'onlineSensor':
                     self.deviceDict[device.id] = OnlineSensorDevice(device, self)
@@ -163,8 +162,13 @@ class Plugin(indigo.PluginBase):
                 # start the thread
                 self.deviceDict[device.id].start()
             except Exception as e:
-                self.logger.error('"{}" start error: {}'.format(device.name, e))
-                self.logger.debug(traceback.format_exc())
+                msg = '"{}" start error: {}'.format(device.name, e)
+                if self.debug:
+                    self.logger.exception(msg)
+                else:
+                    self.logger.error(msg)
+                self.deviceDict[device.id].cancel()
+                device.setErrorStateOnServer(type(e).__name__)
 
     #-------------------------------------------------------------------------------
     def deviceStopComm(self, device):
@@ -347,8 +351,13 @@ class SensorBase(threading.Thread):
             except Queue.Empty:
                 pass
             except Exception as e:
-                self.logger.error('"{}" thread error: {}'.format(self.name, e))
-                self.logger.debug(traceback.format_exc())
+                msg = '"{}" thread error: {}'.format(self.name, e)
+                if self.plugin.debug:
+                    self.logger.exception(msg)
+                else:
+                    self.logger.error(msg)
+                self.device.setErrorStateOnServer(type(e).__name__)
+                self.cancelled = True
         else:
             self.logger.debug('Thread cancelled: {}'.format(self.name))
 
