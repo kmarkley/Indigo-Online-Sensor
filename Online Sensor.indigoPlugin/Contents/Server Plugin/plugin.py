@@ -131,7 +131,6 @@ class Plugin(indigo.PluginBase):
 
                 if self.loopTime > self.pluginNextUpdateCheck:
                     self.checkForUpdates()
-                    self.pluginNextUpdateCheck = self.loopTime + (kPluginUpdateCheckHours*60*60)
 
                 self.sleep(self.loopTime+1-time.time())
 
@@ -168,7 +167,7 @@ class Plugin(indigo.PluginBase):
                 else:
                     self.logger.error(msg)
                 self.deviceDict[device.id].cancel()
-                device.setErrorStateOnServer(type(e).__name__)
+                device.setErrorStateOnServer('error')
 
     #-------------------------------------------------------------------------------
     def deviceStopComm(self, device):
@@ -285,7 +284,16 @@ class Plugin(indigo.PluginBase):
 
     #-------------------------------------------------------------------------------
     def checkForUpdates(self):
-        self.updater.checkForUpdate()
+        self.pluginNextUpdateCheck = time.time() + (kPluginUpdateCheckHours*60*60)
+        try:
+            self.updater.checkForUpdate()
+        except Exception as e:
+            msg = 'Check for update error.  Next attempt in {} hours.'.format(kPluginUpdateCheckHours)
+            if self.debug:
+                self.logger.exception(msg)
+            else:
+                self.logger.error(msg)
+                self.logger.debug(e)
 
     #-------------------------------------------------------------------------------
     def updatePlugin(self):
@@ -356,7 +364,7 @@ class SensorBase(threading.Thread):
                     self.logger.exception(msg)
                 else:
                     self.logger.error(msg)
-                self.device.setErrorStateOnServer(type(e).__name__)
+                self.device.setErrorStateOnServer('error')
                 self.cancelled = True
         else:
             self.logger.debug('Thread cancelled: {}'.format(self.name))
@@ -563,7 +571,7 @@ class SpeedtestDevice(SensorBase):
                 self.onState = False
 
             finally:
-                self.logger.debug("performSpeedtest: {} seconds".format( logger.debugtime()-self.lastcheck ) )
+                self.logger.debug("performSpeedtest: {} seconds".format( time.time()-self.lastcheck ) )
                 self.plugin.speedtest_lock.release()
         else:
             self.logger.error("Unable to acquire lock")
