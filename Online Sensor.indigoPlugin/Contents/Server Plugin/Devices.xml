@@ -31,10 +31,24 @@
                 <Label>Server 8:</Label>
             </Field>
             <Field id="sensorLabel2" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
-                <Label>Servers may be IP addresses or domain names.</Label>
+                <Label>Servers may be IP addresses or domain names</Label>
             </Field>
             <Field id="spacer1" type="label">
                 <Label> </Label>
+            </Field>
+            <Field id="sensorLogic" type="menu" defaultValue="ANY">
+                <Label>Sensor Logic:</Label>
+                <List>
+                    <Option value="ANY">ANY</Option>
+                    <Option value="ALL">ALL</Option>
+                </List>
+            </Field>
+            <Field id="spacer2" type="label">
+                <Label> </Label>
+            </Field>
+            <Field id="dualFrequency" type="checkbox" defaultValue="false">
+                <Label>Dual Frequency:</Label>
+                <Description>Use different frequencies for ON and OFF?</Description>
             </Field>
             <Field id="updateFrequency" type="menu" defaultValue="300">
                 <Label>Update Frequency:</Label>
@@ -51,18 +65,32 @@
                     <Option value="21600">6 Hours</Option>
                 </List>
             </Field>
-            <Field id="disabledLabel" type="label" visibleBindingId="updateFrequency"  visibleBindingValue="0" alwaysUseInDialogHeightCalc="true" fontColor="darkgray" fontSize="small" alignWithControl="true">
-                <Label>Device will only update when requested.</Label>
+            <Field id="dualFreqHelp1" type="label" visibleBindingId="dualFrequency" visibleBindingValue="true" fontColor="blue" fontSize="small" alignWithControl="true" alwaysUseInDialogHeightCalc="true">
+                <Label>Update frequency when device is ON</Label>
             </Field>
-            <Field id="spacer2" type="label">
-                <Label> </Label>
+            <Field id="disabledLabel1" type="label" visibleBindingId="updateFrequency"  visibleBindingValue="0" alwaysUseInDialogHeightCalc="true" fontColor="red" fontSize="small" alignWithControl="true">
+                <Label>Device will only update when requested</Label>
             </Field>
-            <Field id="sensorLogic" type="menu" defaultValue="ANY">
-                <Label>Sensor Logic:</Label>
+            <Field id="updateFrequency2" type="menu" defaultValue="300" visibleBindingId="dualFrequency" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true">
+                <Label>Update Frequency:</Label>
                 <List>
-                    <Option value="ANY">ANY</Option>
-                    <Option value="ALL">ALL</Option>
+                    <Option value="0">Disable</Option>
+                    <Option value="60">1 Minute</Option>
+                    <Option value="120">2 Minutes</Option>
+                    <Option value="300">5 Minutes</Option>
+                    <Option value="600">10 Minutes</Option>
+                    <Option value="900">15 Minutes</Option>
+                    <Option value="1800">30 Minutes</Option>
+                    <Option value="3600">1 Hour</Option>
+                    <Option value="10800">3 Hours</Option>
+                    <Option value="21600">6 Hours</Option>
                 </List>
+            </Field>
+            <Field id="dualFreqHelp2" type="label" visibleBindingId="dualFrequency" visibleBindingValue="true" fontColor="blue" fontSize="small" alignWithControl="true" alwaysUseInDialogHeightCalc="true">
+                <Label>Update frequency when device is OFF</Label>
+            </Field>
+            <Field id="disabledLabel2" type="label" visibleBindingId="updateFrequency2"  visibleBindingValue="0" alwaysUseInDialogHeightCalc="true" fontColor="red" fontSize="small" alignWithControl="true">
+                <Label>Device will only update when requested</Label>
             </Field>
         </ConfigUI>
         <States>
@@ -87,6 +115,13 @@
             <Field id="spacer1" type="label">
                 <Label> </Label>
             </Field>
+            <Field id="dualFrequency" type="checkbox" defaultValue="false">
+                <Label>Dual Frequency:</Label>
+                <Description>Use different frequencies for ON and OFF?</Description>
+            </Field>
+            <Field id="dualFreqHelp1" type="label" visibleBindingId="dualFrequency" visibleBindingValue="true" fontColor="blue" alwaysUseInDialogHeightCalc="true">
+                <Label>Settings when device is ON</Label>
+            </Field>
             <Field id="updateFrequency" type="menu" defaultValue="300">
                 <Label>Update Frequency:</Label>
                 <List>
@@ -105,8 +140,8 @@
                     <Option value="3600">1 Hour</Option>
                 </List>
             </Field>
-            <Field id="disabledLabel" type="label" visibleBindingId="updateFrequency"  visibleBindingValue="0" alwaysUseInDialogHeightCalc="true" fontColor="darkgray" fontSize="small" alignWithControl="true">
-                <Label>Device will only update when requested.</Label>
+            <Field id="disabledLabel1" type="label" visibleBindingId="updateFrequency"  visibleBindingValue="0" alwaysUseInDialogHeightCalc="true" fontColor="red" fontSize="small" alignWithControl="true">
+                <Label>Device will only update when requested</Label>
             </Field>
             <Field id="persistCycles" type="menu" defaultValue="1">
                 <Label>Persist Cycles</Label>
@@ -117,6 +152,52 @@
                     <Option value="4">4</Option>
                     <Option value="5">5</Option>
                 </List>
+            </Field>
+            <Field id="persistHelp" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="dualFrequency" visibleBindingValue="false">
+                <Label>Device changes after this many successive ping results</Label>
+            </Field>
+            <Field id="persistHelp1" type="label" visibleBindingId="dualFrequency" visibleBindingValue="true" fontColor="darkgray" fontSize="small" alignWithControl="true" alwaysUseInDialogHeightCalc="true">
+                <Label>Device turns OFF after this many failed pings</Label>
+            </Field>
+            <Field id="spacer2" type="label" visibleBindingId="dualFrequency" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true">
+                <Label> </Label>
+            </Field>
+            <Field id="dualFreqHelp2" type="label" visibleBindingId="dualFrequency" visibleBindingValue="true" fontColor="blue" alwaysUseInDialogHeightCalc="true">
+                <Label>Settings when device is OFF</Label>
+            </Field>
+            <Field id="updateFrequency2" type="menu" defaultValue="300" visibleBindingId="dualFrequency" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true">
+                <Label>Update Frequency:</Label>
+                <List>
+                    <Option value="0">Disable</Option>
+                    <Option value="2">2 Seconds</Option>
+                    <Option value="5">5 Seconds</Option>
+                    <Option value="10">10 Seconds</Option>
+                    <Option value="15">15 Seconds</Option>
+                    <Option value="30">30 Seconds</Option>
+                    <Option value="60">1 Minute</Option>
+                    <Option value="120">2 Minutes</Option>
+                    <Option value="300">5 Minutes</Option>
+                    <Option value="600">10 Minutes</Option>
+                    <Option value="900">15 Minutes</Option>
+                    <Option value="1800">30 Minutes</Option>
+                    <Option value="3600">1 Hour</Option>
+                </List>
+            </Field>
+            <Field id="disabledLabel2" type="label" visibleBindingId="updateFrequency2"  visibleBindingValue="0" alwaysUseInDialogHeightCalc="true" fontColor="red" fontSize="small" alignWithControl="true">
+                <Label>Device will only update when requested</Label>
+            </Field>
+            <Field id="persistCycles2" type="menu" defaultValue="1" visibleBindingId="dualFrequency" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true">
+                <Label>Persist Cycles</Label>
+                <List>
+                    <Option value="1">1</Option>
+                    <Option value="2">2</Option>
+                    <Option value="3">3</Option>
+                    <Option value="4">4</Option>
+                    <Option value="5">5</Option>
+                </List>
+            </Field>
+            <Field id="persistHelp2" type="label" visibleBindingId="dualFrequency" visibleBindingValue="true" fontColor="darkgray" fontSize="small" alignWithControl="true" alwaysUseInDialogHeightCalc="true">
+                <Label>Device turns ON after this many successful pings</Label>
             </Field>
         </ConfigUI>
         <States>
@@ -138,6 +219,13 @@
             <Field id="ipEchoService" type="textfield" defaultValue="http://ipecho.net/plain">
                 <Label>IP Echo Service (full URL):</Label>
             </Field>
+            <Field id="spacer1" type="label">
+                <Label> </Label>
+            </Field>
+            <Field id="dualFrequency" type="checkbox" defaultValue="false">
+                <Label>Dual Frequency:</Label>
+                <Description>Use different frequencies for ON and OFF?</Description>
+            </Field>
             <Field id="updateFrequency" type="menu" defaultValue="600">
                 <Label>Update Frequency:</Label>
                 <List>
@@ -155,8 +243,34 @@
                     <Option value="86400">24 Hours</Option>
                 </List>
             </Field>
-            <Field id="disabledLabel" type="label" visibleBindingId="updateFrequency"  visibleBindingValue="0" alwaysUseInDialogHeightCalc="true" fontColor="darkgray" fontSize="small" alignWithControl="true">
-                <Label>Device will only update when requested.</Label>
+            <Field id="dualFreqHelp1" type="label" visibleBindingId="dualFrequency" visibleBindingValue="true" fontColor="blue" fontSize="small" alignWithControl="true" alwaysUseInDialogHeightCalc="true">
+                <Label>Update frequency when device is ON</Label>
+            </Field>
+            <Field id="disabledLabel1" type="label" visibleBindingId="updateFrequency"  visibleBindingValue="0" alwaysUseInDialogHeightCalc="true" fontColor="red" fontSize="small" alignWithControl="true">
+                <Label>Device will only update when requested</Label>
+            </Field>
+            <Field id="updateFrequency2" type="menu" defaultValue="600" visibleBindingId="dualFrequency"  visibleBindingValue="true">
+                <Label>Update Frequency:</Label>
+                <List>
+                    <Option value="0">Disable</Option>
+                    <Option value="60">1 Minute</Option>
+                    <Option value="120">2 Minutes</Option>
+                    <Option value="300">5 Minutes</Option>
+                    <Option value="600">10 Minutes</Option>
+                    <Option value="900">15 Minutes</Option>
+                    <Option value="1800">30 Minutes</Option>
+                    <Option value="3600">1 Hour</Option>
+                    <Option value="10800">3 Hours</Option>
+                    <Option value="21600">6 Hours</Option>
+                    <Option value="43200">12 Hours</Option>
+                    <Option value="86400">24 Hours</Option>
+                </List>
+            </Field>
+            <Field id="dualFreqHelp2" type="label" visibleBindingId="dualFrequency" visibleBindingValue="true" fontColor="blue" fontSize="small" alignWithControl="true" alwaysUseInDialogHeightCalc="true">
+                <Label>Update frequency when device is OFF</Label>
+            </Field>
+            <Field id="disabledLabel2" type="label" visibleBindingId="updateFrequency2"  visibleBindingValue="0" alwaysUseInDialogHeightCalc="true" fontColor="red" fontSize="small" alignWithControl="true">
+                <Label>Device will only update when requested</Label>
             </Field>
         </ConfigUI>
         <States>
@@ -183,6 +297,13 @@
             <Field id="domainName" type="textfield">
                 <Label>Domain Name:</Label>
             </Field>
+            <Field id="spacer1" type="label">
+                <Label> </Label>
+            </Field>
+            <Field id="dualFrequency" type="checkbox" defaultValue="false">
+                <Label>Dual Frequency:</Label>
+                <Description>Use different frequencies for ON and OFF?</Description>
+            </Field>
             <Field id="updateFrequency" type="menu" defaultValue="600">
                 <Label>Update Frequency:</Label>
                 <List>
@@ -200,8 +321,34 @@
                     <Option value="86400">24 Hours</Option>
                 </List>
             </Field>
-            <Field id="disabledLabel" type="label" visibleBindingId="updateFrequency"  visibleBindingValue="0" alwaysUseInDialogHeightCalc="true" fontColor="darkgray" fontSize="small" alignWithControl="true">
-                <Label>Device will only update when requested.</Label>
+            <Field id="dualFreqHelp1" type="label" visibleBindingId="dualFrequency" visibleBindingValue="true" fontColor="blue" fontSize="small" alignWithControl="true" alwaysUseInDialogHeightCalc="true">
+                <Label>Update frequency when device is ON</Label>
+            </Field>
+            <Field id="disabledLabel1" type="label" visibleBindingId="updateFrequency"  visibleBindingValue="0" alwaysUseInDialogHeightCalc="true" fontColor="red" fontSize="small" alignWithControl="true">
+                <Label>Device will only update when requested</Label>
+            </Field>
+            <Field id="updateFrequency2" type="menu" defaultValue="600" visibleBindingId="dualFrequency"  visibleBindingValue="true">
+                <Label>Update Frequency:</Label>
+                <List>
+                    <Option value="0">Disable</Option>
+                    <Option value="60">1 Minute</Option>
+                    <Option value="120">2 Minutes</Option>
+                    <Option value="300">5 Minutes</Option>
+                    <Option value="600">10 Minutes</Option>
+                    <Option value="900">15 Minutes</Option>
+                    <Option value="1800">30 Minutes</Option>
+                    <Option value="3600">1 Hour</Option>
+                    <Option value="10800">3 Hours</Option>
+                    <Option value="21600">6 Hours</Option>
+                    <Option value="43200">12 Hours</Option>
+                    <Option value="86400">24 Hours</Option>
+                </List>
+            </Field>
+            <Field id="dualFreqHelp2" type="label" visibleBindingId="dualFrequency" visibleBindingValue="true" fontColor="blue" fontSize="small" alignWithControl="true" alwaysUseInDialogHeightCalc="true">
+                <Label>Update frequency when device is OFF</Label>
+            </Field>
+            <Field id="disabledLabel2" type="label" visibleBindingId="updateFrequency2"  visibleBindingValue="0" alwaysUseInDialogHeightCalc="true" fontColor="red" fontSize="small" alignWithControl="true">
+                <Label>Device will only update when requested</Label>
             </Field>
         </ConfigUI>
         <States>
@@ -237,7 +384,7 @@
                 <Label>On threshold (Mbps):</Label>
             </Field>
             <Field id="thresholdLabel" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
-                <Label>Device will report ON if either upload or download speed exceeds this threshold.</Label>
+                <Label>Device will report ON if either upload or download speed exceeds this threshold</Label>
             </Field>
             <Field id="distanceUnit" type="menu" defaultValue="mi">
                 <Label>Distance unit:</Label>
@@ -247,10 +394,14 @@
                 </List>
             </Field>
             <Field id="unitLabel" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
-                <Label>Only affects label on control pages.</Label>
+                <Label>Only affects label on control pages</Label>
             </Field>
             <Field id="spacer2" type="label">
                 <Label> </Label>
+            </Field>
+            <Field id="dualFrequency" type="checkbox" defaultValue="false">
+                <Label>Dual Frequency:</Label>
+                <Description>Use different frequencies for ON and OFF?</Description>
             </Field>
             <Field id="updateFrequency" type="menu" defaultValue="21600">
                 <Label>Update Frequency:</Label>
@@ -266,8 +417,31 @@
                     <Option value="86400">24 Hours</Option>
                 </List>
             </Field>
-            <Field id="disabledLabel" type="label" visibleBindingId="updateFrequency"  visibleBindingValue="0" alwaysUseInDialogHeightCalc="true" fontColor="darkgray" fontSize="small" alignWithControl="true">
-                <Label>Device will only update when requested.</Label>
+            <Field id="dualFreqHelp1" type="label" visibleBindingId="dualFrequency" visibleBindingValue="true" fontColor="blue" fontSize="small" alignWithControl="true" alwaysUseInDialogHeightCalc="true">
+                <Label>Update frequency when device is ON</Label>
+            </Field>
+            <Field id="disabledLabel1" type="label" visibleBindingId="updateFrequency"  visibleBindingValue="0" alwaysUseInDialogHeightCalc="true" fontColor="red" fontSize="small" alignWithControl="true">
+                <Label>Device will only update when requested</Label>
+            </Field>
+            <Field id="updateFrequency2" type="menu" defaultValue="21600" visibleBindingId="dualFrequency"  visibleBindingValue="true">
+                <Label>Update Frequency:</Label>
+                <List>
+                    <Option value="0">Disable</Option>
+                    <Option value="600">10 Minutes</Option>
+                    <Option value="900">15 Minutes</Option>
+                    <Option value="1800">30 Minutes</Option>
+                    <Option value="3600">1 Hour</Option>
+                    <Option value="10800">3 Hours</Option>
+                    <Option value="21600">6 Hours</Option>
+                    <Option value="43200">12 Hours</Option>
+                    <Option value="86400">24 Hours</Option>
+                </List>
+            </Field>
+            <Field id="dualFreqHelp2" type="label" visibleBindingId="dualFrequency" visibleBindingValue="true" fontColor="blue" fontSize="small" alignWithControl="true" alwaysUseInDialogHeightCalc="true">
+                <Label>Update frequency when device is OFF</Label>
+            </Field>
+            <Field id="disabledLabel2" type="label" visibleBindingId="updateFrequency2"  visibleBindingValue="0" alwaysUseInDialogHeightCalc="true" fontColor="red" fontSize="small" alignWithControl="true">
+                <Label>Device will only update when requested</Label>
             </Field>
         </ConfigUI>
         <States>
