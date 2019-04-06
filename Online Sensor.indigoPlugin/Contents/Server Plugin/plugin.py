@@ -25,7 +25,6 @@ try:
     from shlex import quote as cmd_quote
 except ImportError:
     from pipes import quote as cmd_quote
-from ghpu import GitHubPluginUpdater
 
 ###############################################################################
 # these are used to create sample devices,
@@ -76,8 +75,6 @@ serverFields = ['checkServer1','checkServer2','checkServer3','checkServer4',
 kAutomaticUpdate = False
 kRequestedUpdate = True
 
-kPluginUpdateCheckHours = 24
-
 kStrftimeFormat = '%Y-%m-%d %H:%M:%S'
 
 ################################################################################
@@ -85,7 +82,6 @@ class Plugin(indigo.PluginBase):
     #-------------------------------------------------------------------------------
     def __init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs):
         indigo.PluginBase.__init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs)
-        self.updater = GitHubPluginUpdater(self)
         self.speedtest_lock = threading.Lock()
         self.deviceDict = dict()
 
@@ -101,8 +97,6 @@ class Plugin(indigo.PluginBase):
         self.logger.debug(u'startup v{}'.format(self.pluginVersion))
         if self.debug:
             self.logger.debug(u'Debug logging enabled')
-        self.pluginNextUpdateCheck = self.pluginPrefs.get('pluginNextUpdateCheck',0)
-        self.logger.debug(u'Next plugin update check: {}'.format(time.ctime(self.pluginNextUpdateCheck)))
         self.loopTime = time.time()
 
     #-------------------------------------------------------------------------------
@@ -110,7 +104,6 @@ class Plugin(indigo.PluginBase):
         self.logger.debug(u'shutdown')
         self.pluginPrefs['showDebugInfo'] = self.debug
         self.pluginPrefs['alwaysUpdate'] = self.alwaysUpdate
-        self.pluginPrefs['pluginNextUpdateCheck'] = self.pluginNextUpdateCheck
 
     #-------------------------------------------------------------------------------
     def closedPrefsConfigUi(self, valuesDict, userCancelled):
@@ -128,9 +121,6 @@ class Plugin(indigo.PluginBase):
                 self.loopTime = time.time()
                 for devId, device in self.deviceDict.items():
                     device.loopAction()
-
-                if self.loopTime > self.pluginNextUpdateCheck:
-                    self.checkForUpdates()
 
                 self.sleep(self.loopTime+1-time.time())
 
@@ -281,27 +271,6 @@ class Plugin(indigo.PluginBase):
                 props        = defaultProps[typeId],
                 )
             return (True, valuesDict)
-
-    #-------------------------------------------------------------------------------
-    def checkForUpdates(self):
-        self.pluginNextUpdateCheck = time.time() + (kPluginUpdateCheckHours*60*60)
-        try:
-            self.updater.checkForUpdate()
-        except Exception as e:
-            msg = u'Check for update error.  Next attempt in {} hours.'.format(kPluginUpdateCheckHours)
-            if self.debug:
-                self.logger.exception(msg)
-            else:
-                self.logger.error(msg)
-                self.logger.debug(e)
-
-    #-------------------------------------------------------------------------------
-    def updatePlugin(self):
-        self.updater.update()
-
-    #-------------------------------------------------------------------------------
-    def forceUpdate(self):
-        self.updater.update(currentVersion='0.0.0')
 
     #-------------------------------------------------------------------------------
     def toggleDebug(self):
