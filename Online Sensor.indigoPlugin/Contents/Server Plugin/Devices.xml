@@ -386,6 +386,10 @@
             <Field id="thresholdLabel" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
                 <Label>Device will report ON if either upload or download speed exceeds this threshold</Label>
             </Field>
+            <Field id="shareResults" type="checkbox" defaultValue="false">
+                <Label>Share Results:</Label>
+                <Description>Send results to speedtest.net</Description>
+            </Field>
             <Field id="distanceUnit" type="menu" defaultValue="mi">
                 <Label>Distance unit:</Label>
                 <List>

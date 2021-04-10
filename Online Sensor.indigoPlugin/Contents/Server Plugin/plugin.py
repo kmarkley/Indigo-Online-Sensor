@@ -66,6 +66,7 @@ defaultProps = {
         'distanceUnit':     "mi",
         'updateFrequency':  "21600",
         'address':          "speedtest.net",
+        'shareResults':     False,
         },
     }
 
@@ -496,6 +497,10 @@ class SpeedtestDevice(SensorBase):
     #-------------------------------------------------------------------------------
     def __init__(self, device, plugin):
         super(SpeedtestDevice, self).__init__(device, plugin)
+        self.tests = self.props['testSelection']
+        self.unit = self.props.get('distanceUnit','')
+        self.threshold = self.props.get('threshold_float',0.)
+        self.share = self.props.get('shareResults',False)
 
     #-------------------------------------------------------------------------------
     def getDeviceStates(self):
@@ -506,31 +511,33 @@ class SpeedtestDevice(SensorBase):
                 s = speedtest.Speedtest()
                 self.logger.debug(u'  ...get best server...')
                 s.get_best_server()
-                if self.props['testSelection'] in ('DOWN','BOTH'):
+                if self.tests in ('DOWN','BOTH'):
                     self.logger.debug(u'  ...download...')
                     s.download()
-                if self.props['testSelection'] in ('UP','BOTH'):
+                if self.tests in ('UP','BOTH'):
                     self.logger.debug(u'  ...upload...')
                     s.upload()
+                if self.share:
+                    self.logger.debug(u'  ...sharing...')
+                    s.results.share()
                 self.logger.debug(u'  ...results...')
                 r = s.results
 
                 dnld = r.download/1024./1024.
                 upld = r.upload/1024./1024.
-                isOn = any(val > self.props.get('threshold_float',0.) for val in [dnld,upld])
+                isOn = any(val > self.threshold for val in [dnld,upld])
 
                 ping = r.ping
                 dist = r.server.get('d',0.)
-                unit = self.props.get('distanceUnit','')
                 lat  = float(r.server.get('lat',0.))
                 lon  = float(r.server.get('lon',0.))
 
                 self.newStates = [
                     {'key':'onOffState',         'value':isOn  },
-                    {'key':'Mbps_download',      'value':dnld,       'uiValue':'{:.2f} Mbps'.format(dnld),    'decimalPlaces':2 },
-                    {'key':'Mbps_upload',        'value':upld,       'uiValue':'{:.2f} Mbps'.format(upld),    'decimalPlaces':2 },
-                    {'key':'ping_latency',       'value':ping,       'uiValue':'{:.2f} ms'.format(ping),      'decimalPlaces':2 },
-                    {'key':'server_distance',    'value':dist,       'uiValue':'{:.2f} {}'.format(dist,unit), 'decimalPlaces':2 },
+                    {'key':'Mbps_download',      'value':dnld,       'uiValue':'{:.2f} Mbps'.format(dnld),          'decimalPlaces':2 },
+                    {'key':'Mbps_upload',        'value':upld,       'uiValue':'{:.2f} Mbps'.format(upld),          'decimalPlaces':2 },
+                    {'key':'ping_latency',       'value':ping,       'uiValue':'{:.2f} ms'.format(ping),            'decimalPlaces':2 },
+                    {'key':'server_distance',    'value':dist,       'uiValue':'{:.2f} {}'.format(dist,self.unit),  'decimalPlaces':2 },
                     {'key':'raw_download',       'value':r.download, 'uiValue':'{} bps'.format(r.download) },
                     {'key':'raw_upload',         'value':r.upload,   'uiValue':'{} bps'.format(r.upload)   },
                     {'key':'server_latitude',    'value':lat,        'uiValue':'{}°'.format(lat)           },
