@@ -75,7 +75,6 @@ serverFields = ['checkServer1','checkServer2','checkServer3','checkServer4',
 
 kAutomaticUpdate = False
 kRequestedUpdate = True
-
 kStrftimeFormat = '%Y-%m-%d %H:%M:%S'
 
 ################################################################################
@@ -83,7 +82,12 @@ class Plugin(indigo.PluginBase):
     #-------------------------------------------------------------------------------
     def __init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs):
         indigo.PluginBase.__init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs)
-        self.speedtest_lock = threading.Lock()
+
+        global PLUGIN_DEBUG, ALWAYS_UPDATE, SPEEDTEST_LOCK
+        PLUGIN_DEBUG = self.debug = self.pluginPrefs.get('showDebugInfo',False)
+        ALWAYS_UPDATE = self.pluginPrefs.get('alwaysUpdate',False)
+        SPEEDTEST_LOCK = threading.Lock()
+
         self.deviceDict = dict()
 
     def __del__(self):
@@ -93,25 +97,23 @@ class Plugin(indigo.PluginBase):
     # Start, Stop and Config changes
     #-------------------------------------------------------------------------------
     def startup(self):
-        self.debug = self.pluginPrefs.get('showDebugInfo',False)
-        self.alwaysUpdate = self.pluginPrefs.get('alwaysUpdate',False)
         self.logger.debug(u'startup v{}'.format(self.pluginVersion))
         if self.debug:
             self.logger.debug(u'Debug logging enabled')
-        self.loopTime = time.time()
 
     #-------------------------------------------------------------------------------
     def shutdown(self):
         self.logger.debug(u'shutdown')
         self.pluginPrefs['showDebugInfo'] = self.debug
-        self.pluginPrefs['alwaysUpdate'] = self.alwaysUpdate
+        self.pluginPrefs['alwaysUpdate'] = ALWAYS_UPDATE
 
     #-------------------------------------------------------------------------------
     def closedPrefsConfigUi(self, valuesDict, userCancelled):
         self.logger.debug(u'closedPrefsConfigUi')
+        global PLUGIN_DEBUG, ALWAYS_UPDATE
         if not userCancelled:
-            self.alwaysUpdate = valuesDict.get('alwaysUpdate',False)
-            self.debug = valuesDict.get('showDebugInfo',False)
+            PLUGIN_DEBUG = self.debug = valuesDict.get('showDebugInfo',False)
+            ALWAYS_UPDATE = valuesDict.get('alwaysUpdate',False)
             if self.debug:
                 self.logger.debug(u'Debug logging enabled')
 
@@ -119,11 +121,11 @@ class Plugin(indigo.PluginBase):
     def runConcurrentThread(self):
         try:
             while True:
-                self.loopTime = time.time()
+                loopTime = time.time()
                 for devId, device in self.deviceDict.items():
-                    device.loopAction()
+                    device.loopAction(loopTime)
 
-                self.sleep(self.loopTime+1-time.time())
+                self.sleep(loopTime+1-time.time())
 
         except self.StopThread:
             pass    # Optionally catch the StopThread exception and do any needed cleanup.
@@ -140,20 +142,20 @@ class Plugin(indigo.PluginBase):
             device.setErrorStateOnServer(None)
             try:
                 if device.deviceTypeId == 'onlineSensor':
-                    self.deviceDict[device.id] = OnlineSensorDevice(device, self)
+                    self.deviceDict[device.id] = OnlineSensorDevice(device, self.logger)
                 elif device.deviceTypeId == 'lanPing':
-                    self.deviceDict[device.id] = LanPingDevice(device, self)
+                    self.deviceDict[device.id] = LanPingDevice(device, self.logger)
                 elif device.deviceTypeId == 'publicIP':
-                    self.deviceDict[device.id] = PublicIpDevice(device, self)
+                    self.deviceDict[device.id] = PublicIpDevice(device, self.logger)
                 elif device.deviceTypeId == 'lookupIP':
-                    self.deviceDict[device.id] = LookupIpDevice(device, self)
+                    self.deviceDict[device.id] = LookupIpDevice(device, self.logger)
                 elif device.deviceTypeId == 'speedtest':
-                    self.deviceDict[device.id] = SpeedtestDevice(device, self)
+                    self.deviceDict[device.id] = SpeedtestDevice(device, self.logger)
                 # start the thread
                 self.deviceDict[device.id].start()
             except Exception as e:
                 msg = u'"{}" start error: {}'.format(device.name, e)
-                if self.debug:
+                if PLUGIN_DEBUG:
                     self.logger.exception(msg)
                 else:
                     self.logger.error(msg)
@@ -275,11 +277,12 @@ class Plugin(indigo.PluginBase):
 
     #-------------------------------------------------------------------------------
     def toggleDebug(self):
+        global PLUGIN_DEBUG
         if self.debug:
             self.logger.debug(u'Debug logging disabled')
-            self.debug = False
+            PLUGIN_DEBUG = self.debug = False
         else:
-            self.debug = True
+            PLUGIN_DEBUG = self.debug = True
             self.logger.debug(u'Debug logging enabled')
 
     #-------------------------------------------------------------------------------
@@ -295,14 +298,13 @@ class Plugin(indigo.PluginBase):
 class SensorBase(threading.Thread):
 
     #-------------------------------------------------------------------------------
-    def __init__(self, device, plugin):
+    def __init__(self, device, logger):
         super(SensorBase, self).__init__()
         self.daemon     = True
         self.cancelled  = False
         self.queue      = Queue.Queue()
 
-        self.plugin     = plugin
-        self.logger     = plugin.logger
+        self.logger     = logger
 
         self.device     = device
         self.id         = device.id
@@ -335,7 +337,7 @@ class SensorBase(threading.Thread):
                 pass
             except Exception as e:
                 msg = u'"{}" thread error: {}'.format(self.name, e)
-                if self.plugin.debug:
+                if PLUGIN_DEBUG:
                     self.logger.exception(msg)
                 else:
                     self.logger.error(msg)
@@ -350,12 +352,12 @@ class SensorBase(threading.Thread):
         self.cancelled = True
 
     #-------------------------------------------------------------------------------
-    def loopAction(self):
+    def loopAction(self, loopTime):
         if self.onState and self.onFreq:
-            if self.lastcheck + self.onFreq < self.plugin.loopTime:
+            if self.lastcheck + self.onFreq < loopTime:
                 self.queue.put(kAutomaticUpdate)
         elif (not self.onState) and self.offFreq:
-            if self.lastcheck + self.offFreq < self.plugin.loopTime:
+            if self.lastcheck + self.offFreq < loopTime:
                 self.queue.put(kAutomaticUpdate)
 
     #-------------------------------------------------------------------------------
@@ -369,15 +371,16 @@ class SensorBase(threading.Thread):
 
     #-------------------------------------------------------------------------------
     def saveDeviceStates(self):
-        if (self.updateType or self.plugin.alwaysUpdate) and (len(self.newStates) == 0):
-            self.setStateValue('onOffState',self.device.states['onOffState'])
         if len(self.newStates) > 0:
-            if self.plugin.debug: # don't fill up plugin log unless actively debugging
+            if PLUGIN_DEBUG: # don't fill up plugin log unless actively debugging
                 self.logger.debug(u'updating states on device "{0}":'.format(self.name))
                 for item in self.newStates:
                     self.logger.debug(u'{:>16}: {}'.format(item['key'],item['value']))
             self.device.updateStatesOnServer(self.newStates)
             self.newStates = list()
+        elif (self.updateType or ALWAYS_UPDATE):
+            self.device.updateStateOnServer(key='onOffState', value=self.onState)
+            self.logger.debug(u'{:>16}: {}'.format('onOffState',self.device.states['onOffState']))
 
     #-------------------------------------------------------------------------------
     def logOnOff(self):
@@ -405,8 +408,8 @@ class SensorBase(threading.Thread):
 class OnlineSensorDevice(SensorBase):
 
     #-------------------------------------------------------------------------------
-    def __init__(self, device, plugin):
-        super(OnlineSensorDevice, self).__init__(device, plugin)
+    def __init__(self, device, logger):
+        super(OnlineSensorDevice, self).__init__(device, logger)
         self.logic   = self.props.get('sensorLogic',"ANY")
         self.servers = filter(None, (self.props.get(key) for key in serverFields))
 
@@ -425,8 +428,8 @@ class OnlineSensorDevice(SensorBase):
 class LanPingDevice(SensorBase):
 
     #-------------------------------------------------------------------------------
-    def __init__(self, device, plugin):
-        super(LanPingDevice, self).__init__(device, plugin)
+    def __init__(self, device, logger):
+        super(LanPingDevice, self).__init__(device, logger)
         self.server  = self.props.get('checkServer1','127.0.0.1')
         self.onPersist = int(self.props.get('persistCycles','1'))
         if self.props.get('dualFrequency',False):
@@ -451,8 +454,8 @@ class LanPingDevice(SensorBase):
 class IpBaseDevice(SensorBase):
 
     #-------------------------------------------------------------------------------
-    def __init__(self, device, plugin):
-        super(IpBaseDevice, self).__init__(device, plugin)
+    def __init__(self, device, logger):
+        super(IpBaseDevice, self).__init__(device, logger)
 
     #-------------------------------------------------------------------------------
     def ipUpdate(self, ipAddress):
@@ -471,8 +474,8 @@ class IpBaseDevice(SensorBase):
 class PublicIpDevice(IpBaseDevice):
 
     #-------------------------------------------------------------------------------
-    def __init__(self, device, plugin):
-        super(PublicIpDevice, self).__init__(device, plugin)
+    def __init__(self, device, logger):
+        super(PublicIpDevice, self).__init__(device, logger)
 
     #-------------------------------------------------------------------------------
     def getDeviceStates(self):
@@ -483,8 +486,8 @@ class PublicIpDevice(IpBaseDevice):
 class LookupIpDevice(IpBaseDevice):
 
     #-------------------------------------------------------------------------------
-    def __init__(self, device, plugin):
-        super(LookupIpDevice, self).__init__(device, plugin)
+    def __init__(self, device, logger):
+        super(LookupIpDevice, self).__init__(device, logger)
 
     #-------------------------------------------------------------------------------
     def getDeviceStates(self):
@@ -495,8 +498,8 @@ class LookupIpDevice(IpBaseDevice):
 class SpeedtestDevice(SensorBase):
 
     #-------------------------------------------------------------------------------
-    def __init__(self, device, plugin):
-        super(SpeedtestDevice, self).__init__(device, plugin)
+    def __init__(self, device, logger):
+        super(SpeedtestDevice, self).__init__(device, logger)
         self.tests = self.props['testSelection']
         self.unit = self.props.get('distanceUnit','')
         self.threshold = self.props.get('threshold_float',0.)
@@ -505,7 +508,7 @@ class SpeedtestDevice(SensorBase):
     #-------------------------------------------------------------------------------
     def getDeviceStates(self):
         # global lock so only one speedtest device may update at a time
-        if self.plugin.speedtest_lock.acquire(False):
+        if SPEEDTEST_LOCK.acquire(False):
             self.logger.debug(u'performSpeedtest: {}'.format(self.name))
             try:
                 s = speedtest.Speedtest()
@@ -564,7 +567,7 @@ class SpeedtestDevice(SensorBase):
 
             finally:
                 self.logger.debug(u'performSpeedtest: {} seconds'.format( time.time()-self.lastcheck ) )
-                self.plugin.speedtest_lock.release()
+                SPEEDTEST_LOCK.release()
         else:
             self.logger.error(u'Unable to acquire lock')
 
