@@ -7,7 +7,7 @@
 	<key>ServerApiVersion</key>
 	<string>3.0</string>
 	<key>IwsApiVersion</key>
-	<string>1.0.0</string>
+	<string>1.0.1</string>
 	<key>CFBundleDisplayName</key>
 	<string>Online Sensor</string>
 	<key>CFBundleIdentifier</key>

@@ -611,7 +611,7 @@ def lookup_IP_address(domain):
 def do_shell_script (cmd):
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     out, err = p.communicate()
-    return (not bool(p.returncode)), out.rstrip()
+    return (not bool(p.returncode)), out.decode("utf-8").rstrip()
 
 def zint(value):
     try: return int(value)
