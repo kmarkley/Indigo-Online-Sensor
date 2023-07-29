@@ -13,18 +13,29 @@
 
 import indigo
 import threading
-import Queue
+import queue
 import time
 import subprocess
 import re
 import socket
-from urlparse import urlparse
+from urllib.parse import urlparse
 from random import shuffle
-import speedtest
+
 try:
     from shlex import quote as cmd_quote
 except ImportError:
     from pipes import quote as cmd_quote
+
+SPEEDTEST_INSTALLED = False
+try:
+    import speedtest
+    SPEEDTEST_INSTALLED = True
+except:
+    indigo.server.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", isError=True)
+    indigo.server.log("speedtest library must now be manually installed from terminal:", isError=True)
+    indigo.server.log("    pip3 install speedtest-cli", isError=True)
+    indigo.server.log("(can be ignored if you don't have any speedtest devices configured)")
+    indigo.server.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", isError=True)
 
 ###############################################################################
 # these are used to create sample devices,
@@ -97,7 +108,7 @@ class Plugin(indigo.PluginBase):
     # Start, Stop and Config changes
     #-------------------------------------------------------------------------------
     def startup(self):
-        self.logger.debug(u'startup v{}'.format(self.pluginVersion))
+        self.logger.debug(f"startup v{self.pluginVersion}")
         if self.debug:
             self.logger.debug(u'Debug logging enabled')
 
@@ -134,7 +145,7 @@ class Plugin(indigo.PluginBase):
     # Device Methods
     #-------------------------------------------------------------------------------
     def deviceStartComm(self, device):
-        self.logger.debug(u'deviceStartComm: {}'.format(device.name))
+        self.logger.debug(f"deviceStartComm: {device.name}")
         if device.version != self.pluginVersion:
             self.updateDeviceVersion(device)
 
@@ -154,7 +165,7 @@ class Plugin(indigo.PluginBase):
                 # start the thread
                 self.deviceDict[device.id].start()
             except Exception as e:
-                msg = u'"{}" start error: {}'.format(device.name, e)
+                msg = f"'{device.name}' start error: {e}"
                 if PLUGIN_DEBUG:
                     self.logger.exception(msg)
                 else:
@@ -164,14 +175,14 @@ class Plugin(indigo.PluginBase):
 
     #-------------------------------------------------------------------------------
     def deviceStopComm(self, device):
-        self.logger.debug(u'deviceStopComm: {}'.format(device.name))
+        self.logger.debug(f"deviceStopComm: {device.name}")
         if device.id in self.deviceDict:
             self.deviceDict[device.id].cancel()
             del self.deviceDict[device.id]
 
     #-------------------------------------------------------------------------------
     def validateDeviceConfigUi(self, valuesDict, typeId, devId, runtime=False):
-        self.logger.debug(u'validateDeviceConfigUi: {}'.format(typeId))
+        self.logger.debug(f"validateDeviceConfigUi: {typeId}")
         errorsDict = indigo.Dict()
 
         # ONLINE SENSOR
@@ -188,7 +199,7 @@ class Plugin(indigo.PluginBase):
                     else:
                         i += 1
             if i:
-                address += " (+{})".format(i)
+                address += f" (+{i})"
             valuesDict['address'] = address
 
         # LAN PING
@@ -202,7 +213,7 @@ class Plugin(indigo.PluginBase):
         elif typeId == 'publicIP':
             if not is_valid_url(valuesDict.get("ipEchoService")):
                 errorsDict['ipEchoService'] = "Not a valid URL"
-            valuesDict['address'] = "{uri.netloc}".format(uri=urlparse(valuesDict['ipEchoService']))
+            valuesDict['address'] = f"{urlparse(valuesDict['ipEchoService']).netloc}"
 
         # LOOKUP IP
         elif typeId == 'lookupIP':
@@ -227,7 +238,7 @@ class Plugin(indigo.PluginBase):
 
     #-------------------------------------------------------------------------------
     def updateDeviceVersion(self, device):
-        self.logger.debug(u'updateDeviceVersion: {}'.format(device.name))
+        self.logger.debug(f"updateDeviceVersion: {device.name}")
         # update states
         device.stateListOrDisplayStateIdChanged()
 
@@ -254,7 +265,7 @@ class Plugin(indigo.PluginBase):
     # Menu Methods
     #-------------------------------------------------------------------------------
     def createSampleDevice(self, valuesDict, typeId):
-        self.logger.debug(u'createSampleDevice: {}'.format(valuesDict['deviceName']))
+        self.logger.debug(f"createSampleDevice: {valuesDict['deviceName']}'")
         errorsDict = indigo.Dict()
 
         theName = valuesDict.get('deviceName',"")
@@ -289,7 +300,7 @@ class Plugin(indigo.PluginBase):
     # Action Methods
     #-------------------------------------------------------------------------------
     def actionControlSensor(self, action, device):
-        self.logger.debug(u'actionControlSensor: {}'.format(device.name))
+        self.logger.debug(f"actionControlSensor: {device.name}")
         self.deviceDict[device.id].actionControl(action)
 
 ###############################################################################
@@ -302,7 +313,7 @@ class SensorBase(threading.Thread):
         super(SensorBase, self).__init__()
         self.daemon     = True
         self.cancelled  = False
-        self.queue      = Queue.Queue()
+        self.queue      = queue.Queue()
 
         self.logger     = logger
 
@@ -324,7 +335,7 @@ class SensorBase(threading.Thread):
 
     #-------------------------------------------------------------------------------
     def run(self):
-        self.logger.debug(u'Thread started: {}'.format(self.name))
+        self.logger.debug(f"Thread started: {self.name}")
         while not self.cancelled:
             try:
                 self.updateType = self.queue.get(True,2)
@@ -333,10 +344,10 @@ class SensorBase(threading.Thread):
                 self.logOnOff()
                 self.saveDeviceStates()
                 self.queue.task_done()
-            except Queue.Empty:
+            except queue.Empty:
                 pass
             except Exception as e:
-                msg = u'"{}" thread error: {}'.format(self.name, e)
+                msg = f"{self.name}' thread error: {e}"
                 if PLUGIN_DEBUG:
                     self.logger.exception(msg)
                 else:
@@ -344,7 +355,7 @@ class SensorBase(threading.Thread):
                 self.device.setErrorStateOnServer('error')
                 self.cancelled = True
         else:
-            self.logger.debug(u'Thread cancelled: {}'.format(self.name))
+            self.logger.debug(f"Thread cancelled: {self.name}")
 
     #-------------------------------------------------------------------------------
     def cancel(self):
@@ -363,29 +374,29 @@ class SensorBase(threading.Thread):
     #-------------------------------------------------------------------------------
     def actionControl(self, action):
         if action.sensorAction == indigo.kUniversalAction.RequestStatus:
-            self.logger.info(u'"{}" status request'.format(self.name))
+            self.logger.info(f"'{self.name}' status request")
             self.queue.put(kRequestedUpdate)
         # UNKNOWN
         else:
-            self.logger.error(u'"{}" {} request ignored'.format(self.name, unicode(action.sensorAction)))
+            self.logger.error(f"'{self.name}' {action.sensorAction} request ignored")
 
     #-------------------------------------------------------------------------------
     def saveDeviceStates(self):
         if len(self.newStates) > 0:
             if PLUGIN_DEBUG: # don't fill up plugin log unless actively debugging
-                self.logger.debug(u'updating states on device "{0}":'.format(self.name))
+                self.logger.debug(f"updating states on device '{self.name}:")
                 for item in self.newStates:
-                    self.logger.debug(u'{:>16}: {}'.format(item['key'],item['value']))
+                    self.logger.debug(f"{item['key']:>16}: {item['value']}")
             self.device.updateStatesOnServer(self.newStates)
             self.newStates = list()
         elif (self.updateType or ALWAYS_UPDATE):
             self.device.updateStateOnServer(key='onOffState', value=self.onState)
-            self.logger.debug(u'{:>16}: {}'.format('onOffState',self.device.states['onOffState']))
+            self.logger.debug(f"{'onOffState':>16}: {self.device.states['onOffState']}")
 
     #-------------------------------------------------------------------------------
     def logOnOff(self):
         if self.onState != self.device.onState:
-            self.logger.info(u'"{}" {}'.format(self.name, ['off','on'][self.onState]))
+            self.logger.info(f"'{self.name}' {['off','on'][self.onState]}")
 
     #-------------------------------------------------------------------------------
     def checkTime(self, t=None):
@@ -411,7 +422,7 @@ class OnlineSensorDevice(SensorBase):
     def __init__(self, device, logger):
         super(OnlineSensorDevice, self).__init__(device, logger)
         self.logic   = self.props.get('sensorLogic',"ANY")
-        self.servers = filter(None, (self.props.get(key) for key in serverFields))
+        self.servers = [self.props.get(key) for key in serverFields]
 
     #-------------------------------------------------------------------------------
     def getDeviceStates(self):
@@ -464,7 +475,7 @@ class IpBaseDevice(SensorBase):
         if self.onState != self.device.onState:
             self.setStateValue('onOffState', self.onState)
         if self.onState and ipAddress != self.device.states['ipAddress']:
-                self.logger.info(u'"{}" new IP Address: {}'.format(self.name, ipAddress))
+                self.logger.info(f"'{self.name}' new IP Address: {ipAddress}")
                 self.setStateValue('ipAddress', ipAddress)
                 self.setStateValue('lastChange', self.timestamp)
         if self.device.states['ipAddressUi'] != ipAddressUi:
@@ -508,68 +519,71 @@ class SpeedtestDevice(SensorBase):
     #-------------------------------------------------------------------------------
     def getDeviceStates(self):
         # global lock so only one speedtest device may update at a time
-        if SPEEDTEST_LOCK.acquire(False):
-            self.logger.debug(u'performSpeedtest: {}'.format(self.name))
-            try:
-                s = speedtest.Speedtest()
-                self.logger.debug(u'  ...get best server...')
-                s.get_best_server()
-                if self.tests in ('DOWN','BOTH'):
-                    self.logger.debug(u'  ...download...')
-                    s.download()
-                if self.tests in ('UP','BOTH'):
-                    self.logger.debug(u'  ...upload...')
-                    s.upload()
-                if self.share:
-                    self.logger.debug(u'  ...sharing...')
-                    s.results.share()
-                self.logger.debug(u'  ...results...')
-                r = s.results
+        if SPEEDTEST_INSTALLED:
+            if SPEEDTEST_LOCK.acquire(False):
+                self.logger.debug(f"performSpeedtest: {self.name}")
+                try:
+                    s = speedtest.Speedtest()
+                    self.logger.debug(u'  ...get best server...')
+                    s.get_best_server()
+                    if self.tests in ('DOWN','BOTH'):
+                        self.logger.debug(u'  ...download...')
+                        s.download()
+                    if self.tests in ('UP','BOTH'):
+                        self.logger.debug(u'  ...upload...')
+                        s.upload()
+                    if self.share:
+                        self.logger.debug(u'  ...sharing...')
+                        s.results.share()
+                    self.logger.debug(u'  ...results...')
+                    r = s.results
 
-                dnld = r.download/1024./1024.
-                upld = r.upload/1024./1024.
-                isOn = any(val > self.threshold for val in [dnld,upld])
+                    dnld = r.download/1024./1024.
+                    upld = r.upload/1024./1024.
+                    isOn = any(val > self.threshold for val in [dnld,upld])
 
-                ping = r.ping
-                dist = r.server.get('d',0.)
-                lat  = float(r.server.get('lat',0.))
-                lon  = float(r.server.get('lon',0.))
+                    ping = r.ping
+                    dist = r.server.get('d',0.)
+                    lat  = float(r.server.get('lat',0.))
+                    lon  = float(r.server.get('lon',0.))
 
-                self.newStates = [
-                    {'key':'onOffState',         'value':isOn  },
-                    {'key':'Mbps_download',      'value':dnld,       'uiValue':'{:.2f} Mbps'.format(dnld),          'decimalPlaces':2 },
-                    {'key':'Mbps_upload',        'value':upld,       'uiValue':'{:.2f} Mbps'.format(upld),          'decimalPlaces':2 },
-                    {'key':'ping_latency',       'value':ping,       'uiValue':'{:.2f} ms'.format(ping),            'decimalPlaces':2 },
-                    {'key':'server_distance',    'value':dist,       'uiValue':'{:.2f} {}'.format(dist,self.unit),  'decimalPlaces':2 },
-                    {'key':'raw_download',       'value':r.download, 'uiValue':'{} bps'.format(r.download) },
-                    {'key':'raw_upload',         'value':r.upload,   'uiValue':'{} bps'.format(r.upload)   },
-                    {'key':'server_latitude',    'value':lat,        'uiValue':'{}°'.format(lat)           },
-                    {'key':'server_longitude',   'value':lon,        'uiValue':'{}°'.format(lon)           },
-                    {'key':'bytes_received',     'value':r.bytes_received           },
-                    {'key':'bytes_sent',         'value':r.bytes_sent               },
-                    {'key':'timestamp',          'value':r.timestamp                },
-                    {'key':'server_id',          'value':zint(r.server.get('id',0)) },
-                    {'key':'server_name',        'value':r.server.get('name','')    },
-                    {'key':'server_country',     'value':r.server.get('country','') },
-                    {'key':'server_countrycode', 'value':r.server.get('cc','')      },
-                    {'key':'server_url1',        'value':r.server.get('url','')     },
-                    {'key':'server_url2',        'value':r.server.get('url2','')    },
-                    {'key':'server_host',        'value':r.server.get('host','')    },
-                    {'key':'server_sponsor',     'value':r.server.get('sponsor','') },
-                    {'key':'share_link',         'value':r.share()                  },
-                ]
-                self.onState = isOn
+                    self.newStates = [
+                        {'key':'onOffState',         'value':isOn  },
+                        {'key':'Mbps_download',      'value':dnld,       'uiValue':f'{dnld:.2f} Mbps',        'decimalPlaces':2 },
+                        {'key':'Mbps_upload',        'value':upld,       'uiValue':f'{upld:.2f} Mbps',        'decimalPlaces':2 },
+                        {'key':'ping_latency',       'value':ping,       'uiValue':f'{ping:.2f} ms',          'decimalPlaces':2 },
+                        {'key':'server_distance',    'value':dist,       'uiValue':f'{dist:.2f} {self.unit}', 'decimalPlaces':2 },
+                        {'key':'raw_download',       'value':r.download, 'uiValue':f'{r.download} bps' },
+                        {'key':'raw_upload',         'value':r.upload,   'uiValue':f'{r.upload} bps'   },
+                        {'key':'server_latitude',    'value':lat,        'uiValue':f'{lat}°'           },
+                        {'key':'server_longitude',   'value':lon,        'uiValue':f'{lon}°'           },
+                        {'key':'bytes_received',     'value':r.bytes_received           },
+                        {'key':'bytes_sent',         'value':r.bytes_sent               },
+                        {'key':'timestamp',          'value':r.timestamp                },
+                        {'key':'server_id',          'value':zint(r.server.get('id',0)) },
+                        {'key':'server_name',        'value':r.server.get('name','')    },
+                        {'key':'server_country',     'value':r.server.get('country','') },
+                        {'key':'server_countrycode', 'value':r.server.get('cc','')      },
+                        {'key':'server_url1',        'value':r.server.get('url','')     },
+                        {'key':'server_url2',        'value':r.server.get('url2','')    },
+                        {'key':'server_host',        'value':r.server.get('host','')    },
+                        {'key':'server_sponsor',     'value':r.server.get('sponsor','') },
+                        {'key':'share_link',         'value':r.share()                  },
+                    ]
+                    self.onState = isOn
 
-            except Exception as e:
-                self.logger.error(e.message)
-                self.newStates = [ {'key':'onOffState','value':False} ]
-                self.onState = False
+                except Exception as e:
+                    self.logger.error(e.message)
+                    self.newStates = [ {'key':'onOffState','value':False} ]
+                    self.onState = False
 
-            finally:
-                self.logger.debug(u'performSpeedtest: {} seconds'.format( time.time()-self.lastcheck ) )
-                SPEEDTEST_LOCK.release()
+                finally:
+                    self.logger.debug(f"performSpeedtest: {time.time()-self.lastcheck} seconds")
+                    SPEEDTEST_LOCK.release()
+            else:
+                self.logger.error(u'Unable to acquire lock')
         else:
-            self.logger.error(u'Unable to acquire lock')
+            self.logger.error("Speetest library not installed")
 
 ###############################################################################
 # Utilities

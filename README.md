@@ -8,3 +8,9 @@ There are a few main uses:
 2. Determine if a particular online service is available.
 3. Check if your external IP address changes to trigger a DDNS script
 4. Check the speed of your internet connection with speedtest.net.
+
+### The speedtest library must now be manually installed from terminal:
+
+   `pip3 install speedtest-cli`
+
+(You can ignore this if you don't have any speedtest devices configured)
